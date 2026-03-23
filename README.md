@@ -1,16 +1,56 @@
-# React + Vite
+# 🔔 Remindly – Smart Reminder Web App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Tingkatkan produktivitas tanpa ribet dengan **Remindly**, aplikasi reminder berbasis web dengan notifikasi real-time langsung di browser.
 
-Currently, two official plugins are available:
+Cocok untuk pelajar, pekerja, atau siapa pun yang ingin mengatur waktu dengan lebih rapi dan efisien.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## ✨ Kenapa Remindly?
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- ⚡ Cepat & ringan (tanpa backend)
+- 🎯 Fokus ke produktivitas harian
+- 💻 Bisa langsung dipakai & dikembangkan
+- 🎨 UI modern dan clean (siap dijual ulang / custom)
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🚀 Fitur Unggulan
+
+- ✅ Task & Reminder Management
+- ⏰ Deadline + Early Reminder (pengingat sebelum waktu)
+- 🔔 Notifikasi Browser Real-Time
+- 🔊 Sound Alert (3 pilihan suara: Ping, Digital, Alert)
+- 📊 Statistik & Riwayat Task
+- 🎉 Animasi Confetti saat task selesai
+- 🔍 Filter, Search, dan Sorting
+- 💾 Auto Save (LocalStorage)
+- 🧪 Test Notification Button
+
+---
+
+## 🧠 Cocok Untuk
+
+- Template jualan digital product
+- Portfolio web developer
+- Starter project React
+- Aplikasi produktivitas pribadi
+
+---
+
+## 🛠️ Teknologi
+
+- React (Hooks)
+- JavaScript (ES6+)
+- CSS (Custom UI)
+- Web Notification API
+- Web Audio API
+- LocalStorage
+
+---
+
+## Website Link
+
+remindly-phi.vercel.app
+
+---
