@@ -1,17 +1,19 @@
 import { useState } from "react";
-import { Plus, Calendar, Type } from "lucide-react";
+import { Plus, Calendar, Type, Bell } from "lucide-react";
 
 function TaskInput({ addTask }) {
   const [text, setText] = useState("");
   const [time, setTime] = useState("");
   const [priority, setPriority] = useState("medium");
+  const [reminderMinutes, setReminderMinutes] = useState(0);
 
   const handleAdd = () => {
     if (!text || !time) return;
-    addTask(text, time, priority);
+    addTask(text, time, priority, reminderMinutes);
     setText("");
     setTime("");
     setPriority("medium");
+    setReminderMinutes(0);
   };
 
 
@@ -53,11 +55,29 @@ function TaskInput({ addTask }) {
         ))}
       </div>
 
+      <div className="reminder-selector glass-card" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.03)' }}>
+        <Bell size={16} style={{ color: 'var(--text-muted)' }} />
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', flex: 1 }}>Remind me:</span>
+        <select 
+          value={reminderMinutes} 
+          onChange={(e) => setReminderMinutes(parseInt(e.target.value))}
+          className="mini-select"
+          style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', fontWeight: 'bold', cursor: 'pointer' }}
+        >
+          <option value={0}>At time</option>
+          <option value={5}>5 mins before</option>
+          <option value={15}>15 mins before</option>
+          <option value={30}>30 mins before</option>
+          <option value={60}>1 hour before</option>
+          <option value={1440}>1 day before</option>
+        </select>
+      </div>
+
 
       <div style={{ display: 'flex', gap: '12px' }}>
         <button className="primary" onClick={handleAdd} style={{ flex: 1 }}>
           <Plus size={20} />
-          Add Task
+          Add Reminder
         </button>
       </div>
     </div>
