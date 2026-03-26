@@ -6,7 +6,6 @@ import {
   Circle,
   Edit3,
   Check,
-  Bell,
   Trash2,
   X,
 } from "lucide-react";
@@ -18,9 +17,6 @@ function TaskCard({ task, deleteTask, toggleDone, updateTask }) {
   const [editText, setEditText] = useState(task.text);
   const [editTime, setEditTime] = useState(task.time);
   const [editPriority, setEditPriority] = useState(task.priority);
-  const [editReminderMinutes, setEditReminderMinutes] = useState(
-    task.reminderMinutes || 0,
-  );
 
   const isExpired =
     !task.done && new Date(task.time).getTime() <= new Date().getTime();
@@ -30,8 +26,6 @@ function TaskCard({ task, deleteTask, toggleDone, updateTask }) {
       text: editText,
       time: editTime,
       priority: editPriority,
-      reminderMinutes: editReminderMinutes,
-      reminderSent: false, // Reset reminder status on edit
     });
     setIsEditing(false);
   };
@@ -90,24 +84,6 @@ function TaskCard({ task, deleteTask, toggleDone, updateTask }) {
                 <option value="high">High</option>
               </select>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Bell size={14} style={{ color: "var(--text-muted)" }} />
-              <select
-                value={editReminderMinutes}
-                onChange={(e) =>
-                  setEditReminderMinutes(parseInt(e.target.value))
-                }
-                className="edit-input mini"
-                style={{ flex: 1 }}
-              >
-                <option value={0}>No early reminder</option>
-                <option value={5}>5 mins before</option>
-                <option value={15}>15 mins before</option>
-                <option value={30}>30 mins before</option>
-                <option value={60}>1 hour before</option>
-                <option value={1440}>1 day before</option>
-              </select>
-            </div>
           </div>
         ) : (
           <div className="task-info" style={{ flex: 1 }}>
@@ -123,22 +99,6 @@ function TaskCard({ task, deleteTask, toggleDone, updateTask }) {
               <span className={`priority-badge priority-${task.priority}`}>
                 {task.priority}
               </span>
-              {task.reminderMinutes > 0 && (
-                <span
-                  className="priority-badge"
-                  style={{
-                    background: "rgba(168, 85, 247, 0.1)",
-                    color: "#a855f7",
-                    border: "1px solid rgba(168, 85, 247, 0.2)",
-                  }}
-                >
-                  <Bell size={10} style={{ marginRight: "4px" }} />
-                  {task.reminderMinutes === 1440
-                    ? "1d"
-                    : `${task.reminderMinutes}m`}{" "}
-                  earlier
-                </span>
-              )}
               {isExpired && !task.done && (
                 <span
                   style={{
