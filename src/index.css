@@ -39,7 +39,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding-top: 5vh;
+  padding: 20px 0;
   overflow-x: hidden;
   line-height: 1.5;
 }

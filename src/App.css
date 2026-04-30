@@ -2,6 +2,10 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 16px 40px;
   animation: fadeIn 0.5s ease-out;
 }
 
@@ -256,13 +260,28 @@ button.delete:hover {
   box-shadow: var(--shadow-sm);
 }
 
+/* Responsive Grid for Filter Controls */
+.filter-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* Layout & Header */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
-  margin-bottom: 24px;
+  padding: 16px 20px;
+  margin-bottom: 8px;
 }
 
 .logo-section {
@@ -700,7 +719,99 @@ button.delete:hover {
   color: var(--accent-primary);
   font-weight: 600;
   margin-bottom: 4px;
+}/* --- Media Queries for All Sizes --- */
+
+/* Mobile Phones (Portrait) */
+@media (max-width: 480px) {
+  .app {
+    gap: 16px;
+    padding: 0 12px 24px;
+  }
+
+  .header {
+    padding: 12px;
+  }
+
+  h1 {
+    font-size: 1.5rem !important;
+  }
+
+  .glass-card {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .task-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .task-actions {
+    width: 100%;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border-primary);
+    padding-top: 8px;
+  }
+
+  .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    width: 100%;
+    overflow-x: auto;
+    padding: 4px;
+  }
+
+  .filter-btn {
+    flex: 1;
+    white-space: nowrap;
+  }
+
+  .detail-modal {
+    padding: 20px;
+    width: 95%;
+  }
+
+  .detail-title {
+    font-size: 1.25rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-card {
+    padding: 24px;
+  }
+
+  .welcome-card h2 {
+    font-size: 1.5rem;
+  }
 }
 
+/* Tablets (Portrait & Landscape) */
+@media (min-width: 481px) and (max-width: 1024px) {
+  .app {
+    max-width: 90%;
+  }
 
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 
+/* Desktop Large Screens */
+@media (min-width: 1200px) {
+  .app {
+    max-width: 1000px;
+  }
+}
+
+/* Custom Scrollbar for better UX on mobile */
+.history-list::-webkit-scrollbar,
+.detail-modal::-webkit-scrollbar {
+  width: 4px;
+}
