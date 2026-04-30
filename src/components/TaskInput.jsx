@@ -1,19 +1,22 @@
 import { useState } from "react";
-import { Plus, Calendar, Type } from "lucide-react";
+import { Plus, Calendar, Type, FileText, ChevronDown, ChevronUp } from "lucide-react";
 
 function TaskInput({ addTask }) {
   const [text, setText] = useState("");
   const [time, setTime] = useState("");
   const [priority, setPriority] = useState("medium");
+  const [detail, setDetail] = useState("");
+  const [showDetail, setShowDetail] = useState(false);
 
   const handleAdd = () => {
     if (!text || !time) return;
-    addTask(text, time, priority);
+    addTask(text, time, priority, detail);
     setText("");
     setTime("");
     setPriority("medium");
+    setDetail("");
+    setShowDetail(false);
   };
-
 
   return (
     <div className="input-group">
@@ -40,6 +43,32 @@ function TaskInput({ addTask }) {
         </div>
       </div>
 
+      <button
+        type="button"
+        onClick={() => setShowDetail(!showDetail)}
+        style={{
+          background: 'transparent',
+          color: 'var(--text-secondary)',
+          fontSize: '0.85rem',
+          padding: '6px 0',
+          justifyContent: 'flex-start',
+        }}
+      >
+        <FileText size={16} />
+        Add detail (optional)
+        {showDetail ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+
+      {showDetail && (
+        <textarea
+          value={detail}
+          onChange={(e) => setDetail(e.target.value)}
+          placeholder="Describe the task in more detail..."
+          className="answer-textarea"
+          style={{ minHeight: '80px' }}
+        />
+      )}
+
       <div className="priority-selector">
         {['low', 'medium', 'high'].map((p) => (
           <button
@@ -52,7 +81,6 @@ function TaskInput({ addTask }) {
           </button>
         ))}
       </div>
-
 
       <div style={{ display: 'flex', gap: '12px' }}>
         <button className="primary" onClick={handleAdd} style={{ flex: 1 }}>

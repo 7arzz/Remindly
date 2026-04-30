@@ -12,7 +12,7 @@ import {
 
 import { useState } from "react";
 
-function TaskCard({ task, deleteTask, toggleDone, updateTask }) {
+function TaskCard({ task, deleteTask, toggleDone, updateTask, onClick }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
   const [editTime, setEditTime] = useState(task.time);
@@ -86,7 +86,11 @@ function TaskCard({ task, deleteTask, toggleDone, updateTask }) {
             </div>
           </div>
         ) : (
-          <div className="task-info" style={{ flex: 1 }}>
+          <div 
+            className="task-info clickable-task" 
+            style={{ flex: 1 }} 
+            onClick={onClick}
+          >
             <span className="task-text">{task.text}</span>
             <div className="task-time">
               <Clock size={12} />
@@ -99,6 +103,11 @@ function TaskCard({ task, deleteTask, toggleDone, updateTask }) {
               <span className={`priority-badge priority-${task.priority}`}>
                 {task.priority}
               </span>
+              {task.isAssignment && (
+                <span className="priority-badge" style={{ background: "rgba(99, 102, 241, 0.15)", color: "#818cf8", border: "1px solid rgba(99, 102, 241, 0.3)" }}>
+                  Assignment
+                </span>
+              )}
               {isExpired && !task.done && (
                 <span
                   style={{

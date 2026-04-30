@@ -1,25 +1,33 @@
 import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
-// 🔧 Konfigurasi Firebase (Dapatkan dari Firebase Console Anda!)
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyADgLsiTYqfYbvnlt1BI2cQonBTguxlhDU",
+  authDomain: "remindly-579de.firebaseapp.com",
+  projectId: "remindly-579de",
+  storageBucket: "remindly-579de.firebasestorage.app",
+  messagingSenderId: "575184734169",
+  appId: "1:575184734169:web:6c8fbd257a6a686e263bc8"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
 const messaging = getMessaging(app);
+
+export const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
+export const logout = () => signOut(auth);
 
 export const requestForToken = (vapidKey) => {
   return getToken(messaging, { vapidKey: vapidKey })
     .then((currentToken) => {
       if (currentToken) {
         console.log('Current token for client: ', currentToken);
-        // Simpan token ini ke server/database Anda untuk mengirim notif nanti!
         return currentToken;
       } else {
         console.log('No registration token available. Request permission to generate one.');
@@ -38,4 +46,4 @@ export const onMessageListener = () =>
     });
   });
 
-export { messaging };
+export { auth, db, messaging };

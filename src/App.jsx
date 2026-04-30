@@ -1,18 +1,32 @@
 import { useState, useEffect, useCallback } from "react";
-import { BarChart3, Trash2, ListTodo } from "lucide-react";
+import { BarChart3, Trash2, ListTodo, LogIn, LogOut, User as UserIcon, Globe } from "lucide-react";
 import confetti from "canvas-confetti";
 import FilterControls from "./components/FilterControls";
 import ProgressBar from "./components/ProgressBar";
 import StatsDrawer from "./components/StatsDrawer";
 import TaskInput from "./components/TaskInput";
 import TaskList from "./components/TaskList";
+import Detail from "./components/Detail";
+import { auth, db, loginWithGoogle, logout } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  orderBy,
+  getDocs,
+  writeBatch
+} from "firebase/firestore";
 import "./App.css";
 
 function App() {
-  const [tasks, setTasks] = useState(() => {
-    const saved = localStorage.getItem("remindly_tasks");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState([]);
   const [filter, setFilter] = useState(
     () => localStorage.getItem("remindly_filter") || "all",
   );
@@ -20,19 +34,37 @@ function App() {
     () => localStorage.getItem("remindly_sortBy") || "time",
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem("remindly_history");
-    return saved ? JSON.parse(saved) : [];
-  });
   const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
 
+  // Auth Listener
   useEffect(() => {
-    localStorage.setItem("remindly_tasks", JSON.stringify(tasks));
-  }, [tasks]);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
+  // Firestore Sync - Public Mode
   useEffect(() => {
-    localStorage.setItem("remindly_history", JSON.stringify(history));
-  }, [history]);
+    if (!user) {
+      setTasks([]);
+      return;
+    }
+
+    // No userId filter - everyone sees everything
+    const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const taskData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setTasks(taskData);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   useEffect(() => {
     localStorage.setItem("remindly_filter", filter);
@@ -43,63 +75,121 @@ function App() {
   }, [sortBy]);
 
   // Add task
-  const addTask = useCallback((text, time, priority) => {
+  const addTask = useCallback(async (text, time, priority, detail) => {
+    if (!user) return;
+    
     const newTask = {
-      id: Date.now(),
+      userId: user.uid,
+      userName: user.displayName || user.email.split('@')[0],
+      userEmail: user.email,
       text,
       time,
       priority: priority || "medium",
+      detail: detail || "",
       done: false,
       createdAt: new Date().toISOString(),
     };
-    setTasks((prev) => [...prev, newTask]);
 
-    confetti({
-      particleCount: 50,
-      spread: 60,
-      origin: { y: 0.8 },
-      colors: ["#a855f7", "#7c3aed", "#ffffff"],
-    });
-  }, []);
+    try {
+      await addDoc(collection(db, "tasks"), newTask);
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.8 },
+        colors: ["#6366f1", "#4f46e5", "#ffffff"],
+      });
+    } catch (error) {
+      console.error("Error adding task: ", error);
+    }
+  }, [user]);
 
   // Delete task
-  const deleteTask = useCallback((id) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
-  }, []);
+  const deleteTask = useCallback(async (id) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, "tasks", id));
+    } catch (error) {
+      console.error("Error deleting task: ", error);
+    }
+  }, [user]);
 
-  const updateTask = useCallback((id, updates) => {
-    setTasks((prev) =>
-      prev.map((task) => (task.id === id ? { ...task, ...updates } : task)),
-    );
-  }, []);
+  const updateTask = useCallback(async (id, updates) => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, "tasks", id), updates);
+    } catch (error) {
+      console.error("Error updating task: ", error);
+    }
+  }, [user]);
 
   // Toggle Done
-  const toggleDone = useCallback((id) => {
-    let isNowDone = false;
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id === id) {
-          isNowDone = !task.done;
-          return { ...task, done: isNowDone };
-        }
-        return task;
-      }),
+  const toggleDone = useCallback(async (id) => {
+    if (!user) return;
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    const isNowDone = !task.done;
+    try {
+      await updateDoc(doc(db, "tasks", id), { done: isNowDone });
+      if (isNowDone) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling task: ", error);
+    }
+  }, [user, tasks]);
+
+  const clearAll = useCallback(async () => {
+    if (!user) return;
+    if (window.confirm("Are you sure you want to clear ALL PUBLIC tasks? This will delete everyone's data.")) {
+      try {
+        const q = query(collection(db, "tasks"));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(db);
+        snapshot.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+      } catch (error) {
+        console.error("Error clearing tasks: ", error);
+      }
+    }
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loader"></div>
+      </div>
     );
+  }
 
-    if (isNowDone) {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
-    }
-  }, []);
-
-  const clearAll = useCallback(() => {
-    if (window.confirm("Are you sure you want to clear all tasks?")) {
-      setTasks([]);
-    }
-  }, []);
+  if (!user) {
+    return (
+      <div className="app login-view">
+        <header className="header glass-card">
+          <div className="logo-section">
+            <div className="bell-icon">
+              <ListTodo size={24} />
+            </div>
+            <h1>Remindly</h1>
+          </div>
+        </header>
+        <div className="glass-card welcome-card">
+          <h2>Welcome to Remindly</h2>
+          <p>Organize your tasks and assignments in a premium, <b>collaborative</b> cloud environment.</p>
+          <button className="primary login-btn" onClick={loginWithGoogle}>
+            <LogIn size={20} />
+            Sign in with Google
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -108,7 +198,13 @@ function App() {
           <div className="bell-icon">
             <ListTodo size={24} />
           </div>
-          <h1>Remindly</h1>
+          <div className="user-info-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h1>Remindly</h1>
+              <span className="badge-public"><Globe size={12}/> Public Space</span>
+            </div>
+            <span className="user-email">{user.email}</span>
+          </div>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
           <button
@@ -117,6 +213,13 @@ function App() {
             title="Statistics"
           >
             <BarChart3 size={20} />
+          </button>
+          <button
+            className="icon-btn logout-btn"
+            onClick={logout}
+            title="Logout"
+          >
+            <LogOut size={20} />
           </button>
         </div>
       </header>
@@ -146,7 +249,7 @@ function App() {
         }}
       >
         <h2 style={{ fontSize: "1.2rem", color: "var(--text-secondary)" }}>
-          Your Tasks
+          Community Tasks
         </h2>
         <div style={{ display: "flex", gap: "8px" }}>
           <button
@@ -167,14 +270,24 @@ function App() {
         filter={filter}
         sortBy={sortBy}
         searchQuery={searchQuery}
+        onTaskClick={(task) => setSelectedTaskId(task.id)}
       />
 
       <StatsDrawer
         isOpen={isStatsOpen}
         onClose={() => setIsStatsOpen(false)}
         tasks={tasks}
-        history={history}
+        history={[]}
       />
+
+      {selectedTaskId && (
+        <Detail
+          task={tasks.find((t) => t.id === selectedTaskId)}
+          onClose={() => setSelectedTaskId(null)}
+          updateTask={updateTask}
+          currentUser={user}
+        />
+      )}
     </div>
   );
 }

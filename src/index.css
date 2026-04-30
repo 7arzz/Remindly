@@ -1,26 +1,26 @@
 :root {
-  --bg-primary: #0a0a0c;
-  --bg-secondary: #141418;
-  --bg-glass: rgba(255, 255, 255, 0.03);
-  --bg-glass-hover: rgba(255, 255, 255, 0.05);
+  --bg-primary: #020c1b;
+  --bg-secondary: #0a192f;
+  --bg-card: #112240;
+  --bg-card-hover: #1d2d50;
   
-  --accent-primary: #a855f7;
-  --accent-secondary: #7c3aed;
-  --accent-glow: rgba(168, 85, 247, 0.4);
+  --accent-primary: #64ffda; /* Aquamarine/Teal */
+  --accent-secondary: #00bcd4;
+  --accent-glow: rgba(100, 255, 218, 0.2);
   
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #e6f1ff;
+  --text-secondary: #8892b0;
+  --text-muted: #495670;
   
-  --border-glass: rgba(255, 255, 255, 0.1);
-  --border-accent: rgba(168, 85, 247, 0.3);
+  --border-primary: #233554;
+  --border-accent: #64ffda;
   
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-glow: 0 0 20px var(--accent-glow);
+  --shadow-sm: 0 2px 4px rgba(2, 12, 27, 0.5);
+  --shadow-md: 0 10px 30px -15px rgba(2, 12, 27, 0.7);
+  --shadow-lg: 0 20px 40px -20px rgba(2, 12, 27, 0.8);
+  --shadow-glow: 0 0 15px var(--accent-glow);
 
-  --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-main: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
   
   transition: all 0.3s ease;
 }
@@ -33,7 +33,7 @@
 
 body {
   font-family: var(--font-main);
-  background: var(--bg-primary);
+  background: radial-gradient(circle at top right, #0a192f, #020c1b);
   color: var(--text-primary);
   min-height: 100vh;
   display: flex;
@@ -53,13 +53,14 @@ body {
 h1 {
   font-size: 2.5rem;
   font-weight: 800;
-  background: linear-gradient(to right, #fff, var(--accent-primary));
+  background: linear-gradient(135deg, #fff 0%, var(--accent-primary) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   text-align: center;
   margin-bottom: 2rem;
   letter-spacing: -0.05em;
+  filter: drop-shadow(0 0 8px rgba(100, 255, 218, 0.3));
 }
 
 ::-webkit-scrollbar {
