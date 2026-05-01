@@ -25,9 +25,11 @@ function SummarySection({ currentUser }) {
   const [file, setFile] = useState(null);
 
   useEffect(() => {
-    const q = query(collection(db, "summaries"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "summaries"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setSummaries(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.error("Firestore Snapshot Error (Summaries):", error);
     });
     return () => unsubscribe();
   }, []);
@@ -111,10 +113,12 @@ function SummarySection({ currentUser }) {
     setIsModalOpen(false);
   };
 
-  const filteredSummaries = summaries.filter(s => 
-    s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSummaries = summaries
+    .filter(s => 
+      s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.content.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   return (
     <div className="summary-section">
