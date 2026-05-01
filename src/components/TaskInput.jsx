@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Plus, Calendar, Type, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Calendar, Type, FileText, ChevronDown, ChevronUp, Camera, X } from "lucide-react";
 
 function TaskInput({ addTask }) {
   const [text, setText] = useState("");
@@ -7,15 +6,27 @@ function TaskInput({ addTask }) {
   const [priority, setPriority] = useState("medium");
   const [detail, setDetail] = useState("");
   const [showDetail, setShowDetail] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
 
   const handleAdd = () => {
     if (!text || !time) return;
-    addTask(text, time, priority, detail);
+    addTask(text, time, priority, detail, imageFile);
     setText("");
     setTime("");
     setPriority("medium");
     setDetail("");
     setShowDetail(false);
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   return (
@@ -82,7 +93,27 @@ function TaskInput({ addTask }) {
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: '12px' }}>
+      {imagePreview && (
+        <div className="answer-image-preview" style={{ marginBottom: '12px' }}>
+          <img src={imagePreview} alt="Preview" />
+          <button className="remove-preview" onClick={() => { setImageFile(null); setImagePreview(null); }}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <input 
+          type="file" 
+          id="task-image" 
+          accept="image/*" 
+          style={{ display: 'none' }} 
+          onChange={handleFileChange}
+        />
+        <label htmlFor="task-image" className="tool-btn" style={{ height: '48px', padding: '0 16px' }}>
+          <Camera size={20} />
+        </label>
+
         <button className="primary" onClick={handleAdd} style={{ flex: 1 }}>
           <Plus size={20} />
           Add Task

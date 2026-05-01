@@ -11,7 +11,8 @@ import TaskInput from "./components/TaskInput";
 import TaskList from "./components/TaskList";
 import Detail from "./components/Detail";
 import SummarySection from "./components/SummarySection";
-import { auth, db, loginWithGoogle, logout } from "./firebase";
+import { auth, db, storage, loginWithGoogle, logout } from "./firebase";
+import { compressImage } from "./utils/imageUtils";
 import { onAuthStateChanged } from "firebase/auth";
 import { 
   collection, 
@@ -25,6 +26,7 @@ import {
   getDocs,
   writeBatch
 } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import "./App.css";
 
 function App() {
@@ -81,22 +83,41 @@ function App() {
   }, [sortBy]);
 
   // Add task
-  const addTask = useCallback(async (text, time, priority, detail) => {
+  const addTask = useCallback(async (text, time, priority, detail, imageFile) => {
     if (!user) return;
     
-    const newTask = {
-      userId: user.uid,
-      userName: user.displayName || user.email.split('@')[0],
-      userEmail: user.email,
-      text,
-      time,
-      priority: priority || "medium",
-      detail: detail || "",
-      done: false,
-      createdAt: new Date().toISOString(),
-    };
-
+    let imageUrl = "";
+    
     try {
+      if (imageFile) {
+        const compressedFile = await compressImage(imageFile);
+        const storageRef = ref(storage, `tasks/${Date.now()}_${compressedFile.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+
+        imageUrl = await new Promise((resolve, reject) => {
+          uploadTask.on('state_changed', null, 
+            (error) => reject(error), 
+            async () => {
+              const url = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(url);
+            }
+          );
+        });
+      }
+
+      const newTask = {
+        userId: user.uid,
+        userName: user.displayName || user.email.split('@')[0],
+        userEmail: user.email,
+        text,
+        time,
+        priority: priority || "medium",
+        detail: detail || "",
+        imageUrl,
+        done: false,
+        createdAt: new Date().toISOString(),
+      };
+
       await addDoc(collection(db, "tasks"), newTask);
       confetti({
         particleCount: 50,
@@ -106,6 +127,7 @@ function App() {
       });
     } catch (error) {
       console.error("Error adding task: ", error);
+      alert("Failed to add task. Please check your connection or Firebase Storage settings.");
     }
   }, [user]);
 

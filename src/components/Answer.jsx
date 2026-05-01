@@ -1,13 +1,34 @@
 import { useState } from "react";
-import { Send, Trash2, User as UserIcon } from "lucide-react";
+import { Send, Trash2, User as UserIcon, Camera, X, Loader2 } from "lucide-react";
 
 function Answer({ answers = [], onAddAnswer, onDeleteAnswer, currentUser }) {
   const [newAnswer, setNewAnswer] = useState("");
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAdd = () => {
-    if (!newAnswer.trim()) return;
-    onAddAnswer(newAnswer);
-    setNewAnswer("");
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleAdd = async () => {
+    if (!newAnswer.trim() && !imageFile) return;
+    setIsSubmitting(true);
+    try {
+      await onAddAnswer(newAnswer, imageFile);
+      setNewAnswer("");
+      setImageFile(null);
+      setImagePreview(null);
+    } catch (error) {
+      console.error("Error adding answer:", error);
+      alert("Failed to post answer. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -22,11 +43,47 @@ function Answer({ answers = [], onAddAnswer, onDeleteAnswer, currentUser }) {
           onChange={(e) => setNewAnswer(e.target.value)}
           placeholder="Share your answer or notes with everyone..."
           className="answer-textarea"
+          disabled={isSubmitting}
         />
-        <button className="primary" onClick={handleAdd} style={{ alignSelf: "flex-end", width: "auto" }}>
-          <Send size={16} />
-          Submit Answer
-        </button>
+        
+        {imagePreview && (
+          <div className="answer-image-preview">
+            <img src={imagePreview} alt="Preview" />
+            <button className="remove-preview" onClick={() => { setImageFile(null); setImagePreview(null); }}>
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+          <div className="answer-tools">
+            <input 
+              type="file" 
+              id="answer-image" 
+              accept="image/*" 
+              style={{ display: 'none' }} 
+              onChange={handleFileChange}
+              disabled={isSubmitting}
+            />
+            <label htmlFor="answer-image" className="tool-btn">
+              <Camera size={18} />
+              <span>Add Image</span>
+            </label>
+          </div>
+          
+          <button 
+            className="primary" 
+            onClick={handleAdd} 
+            disabled={isSubmitting || (!newAnswer.trim() && !imageFile)}
+            style={{ width: "auto" }}
+          >
+            {isSubmitting ? (
+              <><Loader2 className="spin" size={16} /> Posting...</>
+            ) : (
+              <><Send size={16} /> Submit Answer</>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="answers-list">
@@ -42,6 +99,11 @@ function Answer({ answers = [], onAddAnswer, onDeleteAnswer, currentUser }) {
                 <span>{ans.userName}</span>
               </div>
               <div className="answer-text">{ans.text}</div>
+              {ans.imageUrl && (
+                <div className="answer-media">
+                  <img src={ans.imageUrl} alt="Answer attachment" onClick={() => window.open(ans.imageUrl, '_blank')} />
+                </div>
+              )}
               <div className="answer-date">
                 {new Date(ans.createdAt).toLocaleString([], {
                   month: "short",

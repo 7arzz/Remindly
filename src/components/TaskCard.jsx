@@ -92,6 +92,11 @@ function TaskCard({ task, deleteTask, toggleDone, updateTask, onClick }) {
             onClick={onClick}
           >
             <span className="task-text">{task.text}</span>
+            {task.imageUrl && (
+              <div className="task-card-media" onClick={(e) => { e.stopPropagation(); window.open(task.imageUrl, '_blank'); }}>
+                <img src={task.imageUrl} alt="Task attachment" />
+              </div>
+            )}
             <div className="task-time">
               <Clock size={12} />
               <span style={{ whiteSpace: 'nowrap' }}>

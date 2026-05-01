@@ -1,6 +1,9 @@
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { X, BookOpen, Clock, AlertCircle, FileText, User as UserIcon } from "lucide-react";
 import Answer from "./Answer";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../firebase";
+import { compressImage } from "../utils/imageUtils";
 
 function Detail({ task, onClose, updateTask, currentUser }) {
   if (!task) return null;
@@ -11,10 +14,29 @@ function Detail({ task, onClose, updateTask, currentUser }) {
     updateTask(task.id, { isAssignment: !isAssignment });
   };
 
-  const handleAddAnswer = (text) => {
+  const handleAddAnswer = async (text, file) => {
+    let imageUrl = "";
+
+    if (file) {
+      const compressedFile = await compressImage(file);
+      const storageRef = ref(storage, `answers/${Date.now()}_${compressedFile.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+
+      imageUrl = await new Promise((resolve, reject) => {
+        uploadTask.on('state_changed', null, 
+          (error) => reject(error), 
+          async () => {
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(url);
+          }
+        );
+      });
+    }
+
     const newAnswer = {
       id: Date.now(),
       text,
+      imageUrl,
       userName: currentUser.displayName || currentUser.email.split('@')[0],
       userEmail: currentUser.email,
       createdAt: new Date().toISOString(),
