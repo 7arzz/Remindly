@@ -8,7 +8,9 @@ import {
   collection, onSnapshot, addDoc, updateDoc, 
   deleteDoc, doc, query, orderBy 
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { 
+  ref, uploadBytesResumable, getDownloadURL, deleteObject 
+} from "firebase/storage";
 import { db, storage } from "../firebase";
 
 function SummarySection({ currentUser }) {
@@ -16,6 +18,7 @@ function SummarySection({ currentUser }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Form State
@@ -34,6 +37,45 @@ function SummarySection({ currentUser }) {
     return () => unsubscribe();
   }, []);
 
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith('image/')) {
+        resolve(file);
+        return;
+      }
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (e) => {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_SIZE = 1200;
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+          }, 'image/jpeg', 0.7);
+        };
+      };
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
@@ -44,9 +86,25 @@ function SummarySection({ currentUser }) {
 
     try {
       if (file) {
-        const storageRef = ref(storage, `summaries/${Date.now()}_${file.name}`);
-        const uploadResult = await uploadBytes(storageRef, file);
-        fileUrl = await getDownloadURL(uploadResult.ref);
+        const compressedFile = await compressImage(file);
+        const storageRef = ref(storage, `summaries/${Date.now()}_${compressedFile.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+
+        const url = await new Promise((resolve, reject) => {
+          uploadTask.on('state_changed', 
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setUploadProgress(progress);
+            }, 
+            (error) => reject(error), 
+            async () => {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(downloadURL);
+            }
+          );
+        });
+
+        fileUrl = url;
         fileName = file.name;
       }
 
@@ -119,6 +177,7 @@ function SummarySection({ currentUser }) {
     setFile(null);
     setEditingId(null);
     setIsModalOpen(false);
+    setUploadProgress(0);
   };
 
   const filteredSummaries = summaries
@@ -266,7 +325,12 @@ function SummarySection({ currentUser }) {
 
                 <button type="submit" className="primary" disabled={loading}>
                   {loading ? (
-                    <><Loader2 className="spin" size={20} /> Saving...</>
+                    <>
+                      <Loader2 className="spin" size={20} /> 
+                      {uploadProgress > 0 && uploadProgress < 100 
+                        ? `Uploading ${Math.round(uploadProgress)}%` 
+                        : "Saving..."}
+                    </>
                   ) : (
                     <>{editingId ? "Update Summary" : "Save Summary"}</>
                   )}
