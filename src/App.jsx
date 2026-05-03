@@ -315,6 +315,7 @@ function App() {
             filter={filter}
             sortBy={sortBy}
             searchQuery={searchQuery}
+            currentUser={user}
             onTaskClick={(task) => setSelectedTaskId(task.id)}
           />
         </div>
@@ -335,6 +336,10 @@ function App() {
         <Detail
           task={tasks.find((t) => t.id === selectedTaskId)}
           onClose={() => setSelectedTaskId(null)}
+          onDelete={() => {
+            deleteTask(selectedTaskId);
+            setSelectedTaskId(null);
+          }}
           updateTask={updateTask}
           currentUser={user}
         />

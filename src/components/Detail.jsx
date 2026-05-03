@@ -1,9 +1,9 @@
 import { motion as Motion, AnimatePresence } from "framer-motion";
-import { X, BookOpen, Clock, AlertCircle, FileText, User as UserIcon } from "lucide-react";
+import { X, BookOpen, Clock, AlertCircle, FileText, User as UserIcon, Trash2 } from "lucide-react";
 import Answer from "./Answer";
 import { db } from "../firebase";
 
-function Detail({ task, onClose, updateTask, currentUser }) {
+function Detail({ task, onClose, updateTask, currentUser, onDelete }) {
   if (!task) return null;
 
   const isAssignment = task.isAssignment || false;
@@ -71,12 +71,29 @@ function Detail({ task, onClose, updateTask, currentUser }) {
                   <span>Created by: <span className="text-text-secondary">{task.userName || 'Anonymous'}</span></span>
                 </div>
               </div>
-              <button 
-                className="p-2 rounded-xl bg-bg-secondary text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90" 
-                onClick={onClose}
-              >
-                <X size={24} />
-              </button>
+              <div className="flex gap-2">
+                {currentUser && task.userEmail === currentUser.email && (
+                  <button 
+                    className="p-2 rounded-xl bg-bg-secondary text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90" 
+                    onClick={() => {
+                      if (window.confirm("Are you sure you want to delete this task?")) {
+                        // We need deleteTask prop in Detail too
+                        onDelete();
+                      }
+                    }}
+                    title="Delete Task"
+                  >
+                    <Trash2 size={24} />
+                  </button>
+                )}
+                <button 
+                  className="p-2 rounded-xl bg-bg-secondary text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90" 
+                  onClick={onClose}
+                  title="Close"
+                >
+                  <X size={24} />
+                </button>
+              </div>
             </div>
 
             {task.detail && (

@@ -12,11 +12,14 @@ import {
 
 import { useState } from "react";
 
-function TaskCard({ task, deleteTask, toggleDone, updateTask, onClick }) {
+function TaskCard({ task, deleteTask, toggleDone, updateTask, currentUser, onClick }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
   const [editTime, setEditTime] = useState(task.time);
   const [editPriority, setEditPriority] = useState(task.priority);
+  const [editDetail, setEditDetail] = useState(task.detail || "");
+
+  const isOwner = currentUser && task.userEmail === currentUser.email;
 
   const isExpired =
     !task.done && new Date(task.time).getTime() <= new Date().getTime();
@@ -26,6 +29,7 @@ function TaskCard({ task, deleteTask, toggleDone, updateTask, onClick }) {
       text: editText,
       time: editTime,
       priority: editPriority,
+      detail: editDetail,
     });
     setIsEditing(false);
   };
@@ -37,7 +41,7 @@ function TaskCard({ task, deleteTask, toggleDone, updateTask, onClick }) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       whileHover={{ y: isEditing ? 0 : -3 }}
-      className={`relative p-5 rounded-2xl border transition-all duration-300 ${
+      className={`relative group p-5 rounded-2xl border transition-all duration-300 ${
         task.done 
         ? "bg-bg-card/30 border-border-primary/30 opacity-60 grayscale-[0.2]" 
         : "bg-bg-card/80 border-border-primary/60 hover:border-accent-primary/50 shadow-lg shadow-black/20"
@@ -79,6 +83,12 @@ function TaskCard({ task, deleteTask, toggleDone, updateTask, onClick }) {
                 <option value="high">High</option>
               </select>
             </div>
+            <textarea
+              value={editDetail}
+              onChange={(e) => setEditDetail(e.target.value)}
+              placeholder="Add details (optional)..."
+              className="w-full bg-bg-primary/50 border border-accent-primary/20 rounded-lg px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-accent-primary transition-all min-h-[60px] resize-none"
+            />
           </div>
         ) : (
           <div 
@@ -147,20 +157,24 @@ function TaskCard({ task, deleteTask, toggleDone, updateTask, onClick }) {
               </button>
             </>
           ) : (
-            <>
-              <button 
-                className="p-2 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all opacity-0 group-hover:opacity-100"
-                onClick={() => setIsEditing(true)}
-              >
-                <Edit3 size={18} />
-              </button>
-              <button
-                className="p-2 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
-                onClick={() => deleteTask(task.id)}
-              >
-                <Trash2 size={18} />
-              </button>
-            </>
+            isOwner && (
+              <>
+                <button 
+                  className="p-2 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all sm:opacity-0 group-hover:opacity-100"
+                  onClick={() => setIsEditing(true)}
+                  title="Edit Task"
+                >
+                  <Edit3 size={18} />
+                </button>
+                <button
+                  className="p-2 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all sm:opacity-0 group-hover:opacity-100"
+                  onClick={() => deleteTask(task.id)}
+                  title="Delete Task"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </>
+            )
           )}
         </div>
       </div>
