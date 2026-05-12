@@ -12,21 +12,7 @@ import TaskList from "./components/TaskList";
 import EnvelopeModal from "./components/EnvelopeModal";
 import Detail from "./components/Detail";
 import SummarySection from "./components/SummarySection";
-import { auth, db, loginWithGoogle, logout } from "./firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { 
-  collection, 
-  onSnapshot, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  orderBy,
-  getDocs,
-  writeBatch
-} from "firebase/firestore";
-// import "./App.css";
+import { supabase, loginWithGoogle, logout } from "./supabase";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -45,32 +31,56 @@ function App() {
 
   // Auth Listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Firestore Sync - Public Mode
+  // Supabase Sync - Real-time Tasks
   useEffect(() => {
     if (!user) {
       setTasks([]);
       return;
     }
 
-    const q = query(collection(db, "tasks"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const taskData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setTasks(taskData);
-    }, (error) => {
-      console.error("Firestore Snapshot Error (Tasks):", error);
-    });
+    // Initial fetch
+    const fetchTasks = async () => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) console.error("Error fetching tasks:", error);
+      else setTasks(data || []);
+    };
 
-    return () => unsubscribe();
+    fetchTasks();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel('tasks_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setTasks(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setTasks(prev => prev.map(t => t.id === payload.new.id ? payload.new : t));
+        } else if (payload.eventType === 'DELETE') {
+          setTasks(prev => prev.filter(t => t.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -87,18 +97,22 @@ function App() {
     
     try {
       const newTask = {
-        userId: user.uid,
-        userName: user.displayName || user.email.split('@')[0],
-        userEmail: user.email,
+        user_id: user.id,
+        user_name: user.user_metadata?.full_name || user.email.split('@')[0],
+        user_email: user.email,
         text,
         time,
         priority: priority || "medium",
         detail: detail || "",
         done: false,
-        createdAt: new Date().toISOString(),
       };
 
-      await addDoc(collection(db, "tasks"), newTask);
+      const { error } = await supabase
+        .from('tasks')
+        .insert([newTask]);
+
+      if (error) throw error;
+
       confetti({
         particleCount: 50,
         spread: 60,
@@ -117,7 +131,11 @@ function App() {
   const deleteTask = useCallback(async (id) => {
     if (!user) return;
     try {
-      await deleteDoc(doc(db, "tasks", id));
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
     } catch (error) {
       console.error("Error deleting task: ", error);
     }
@@ -126,7 +144,11 @@ function App() {
   const updateTask = useCallback(async (id, updates) => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, "tasks", id), updates);
+      const { error } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', id);
+      if (error) throw error;
     } catch (error) {
       console.error("Error updating task: ", error);
     }
@@ -140,7 +162,13 @@ function App() {
 
     const isNowDone = !task.done;
     try {
-      await updateDoc(doc(db, "tasks", id), { done: isNowDone });
+      const { error } = await supabase
+        .from('tasks')
+        .update({ done: isNowDone })
+        .eq('id', id);
+      
+      if (error) throw error;
+
       if (isNowDone) {
         confetti({
           particleCount: 100,
@@ -158,13 +186,11 @@ function App() {
     if (!user) return;
     if (window.confirm("Are you sure you want to clear ALL PUBLIC tasks?")) {
       try {
-        const q = query(collection(db, "tasks"));
-        const snapshot = await getDocs(q);
-        const batch = writeBatch(db);
-        snapshot.docs.forEach((doc) => {
-          batch.delete(doc.ref);
-        });
-        await batch.commit();
+        const { error } = await supabase
+          .from('tasks')
+          .delete()
+          .not('id', 'is', null); // Delete all
+        if (error) throw error;
       } catch (error) {
         console.error("Error clearing tasks: ", error);
       }
@@ -176,7 +202,7 @@ function App() {
       await loginWithGoogle();
     } catch (error) {
       console.error("Login error:", error);
-      alert(`Login failed: ${error.message}\n\nMake sure Google Auth is enabled and domain is authorized.`);
+      alert(`Login failed: ${error.message}`);
     }
   };
 

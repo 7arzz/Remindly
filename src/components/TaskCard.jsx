@@ -3,7 +3,7 @@ import { Trash2, CheckCircle, Circle, Clock } from "lucide-react";
 import envelopeImg from "../assets/envelope.png";
 
 function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick }) {
-  const isOwner = currentUser && task.userEmail === currentUser.email;
+  const isOwner = currentUser && task.user_email === currentUser.email;
   const isExpired = !task.done && new Date(task.time).getTime() <= new Date().getTime();
 
   return (

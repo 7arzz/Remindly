@@ -80,8 +80,8 @@ const EnvelopeModal = ({ task, isOpen, onClose }) => {
                         <div key={answer.id || idx} className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm">
                           <p className="text-sm text-emerald-900 leading-tight mb-2 font-medium">{answer.text}</p>
                           <div className="flex justify-between items-center text-[9px] text-emerald-600/70 font-bold uppercase">
-                            <span>{answer.userName}</span>
-                            <span>{new Date(answer.createdAt).toLocaleDateString()}</span>
+                            <span>{answer.user_name}</span>
+                            <span>{new Date(answer.created_at).toLocaleDateString()}</span>
                           </div>
                         </div>
                       ))}

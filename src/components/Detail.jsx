@@ -1,24 +1,24 @@
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { X, BookOpen, Clock, AlertCircle, FileText, User as UserIcon, Trash2 } from "lucide-react";
 import Answer from "./Answer";
-import { db } from "../firebase";
+import { supabase } from "../supabase";
 
 function Detail({ task, onClose, updateTask, currentUser, onDelete }) {
   if (!task) return null;
 
-  const isAssignment = task.isAssignment || false;
+  const isAssignment = task.is_assignment || false;
 
   const handleToggleAssignment = () => {
-    updateTask(task.id, { isAssignment: !isAssignment });
+    updateTask(task.id, { is_assignment: !isAssignment });
   };
 
   const handleAddAnswer = async (text) => {
     const newAnswer = {
       id: Date.now(),
       text,
-      userName: currentUser.displayName || currentUser.email.split('@')[0],
-      userEmail: currentUser.email,
-      createdAt: new Date().toISOString(),
+      user_name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+      user_email: currentUser.email,
+      created_at: new Date().toISOString(),
     };
     const currentAnswers = task.answers || [];
     updateTask(task.id, { answers: [...currentAnswers, newAnswer] });
@@ -68,16 +68,15 @@ function Detail({ task, onClose, updateTask, currentUser, onDelete }) {
                   <div className="w-6 h-6 rounded-full bg-accent-primary/20 flex items-center justify-center text-accent-primary">
                     <UserIcon size={12} />
                   </div>
-                  <span>Created by: <span className="text-text-secondary">{task.userName || 'Anonymous'}</span></span>
+                  <span>Created by: <span className="text-text-secondary">{task.user_name || 'Anonymous'}</span></span>
                 </div>
               </div>
               <div className="flex gap-2">
-                {currentUser && task.userEmail === currentUser.email && (
+                {currentUser && task.user_email === currentUser.email && (
                   <button 
                     className="p-2 rounded-xl bg-bg-secondary text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90" 
                     onClick={() => {
                       if (window.confirm("Are you sure you want to delete this task?")) {
-                        // We need deleteTask prop in Detail too
                         onDelete();
                       }
                     }}

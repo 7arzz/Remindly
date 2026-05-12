@@ -4,11 +4,7 @@ import {
   X, Loader2, User as UserIcon, Search 
 } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
-import { 
-  collection, onSnapshot, addDoc, updateDoc, 
-  deleteDoc, doc, query 
-} from "firebase/firestore";
-import { db } from "../firebase";
+import { supabase } from "../supabase";
 
 function SummarySection({ currentUser }) {
   const [summaries, setSummaries] = useState([]);
@@ -23,13 +19,34 @@ function SummarySection({ currentUser }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    const q = query(collection(db, "summaries"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setSummaries(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => {
-      console.error("Firestore Snapshot Error (Summaries):", error);
-    });
-    return () => unsubscribe();
+    const fetchSummaries = async () => {
+      const { data, error } = await supabase
+        .from('summaries')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) console.error("Error fetching summaries:", error);
+      else setSummaries(data || []);
+    };
+
+    fetchSummaries();
+
+    const channel = supabase
+      .channel('summaries_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'summaries' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setSummaries(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setSummaries(prev => prev.map(s => s.id === payload.new.id ? payload.new : s));
+        } else if (payload.eventType === 'DELETE') {
+          setSummaries(prev => prev.filter(s => s.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleSubmit = async (e) => {
@@ -42,16 +59,22 @@ function SummarySection({ currentUser }) {
         title,
         content,
         date,
-        userId: currentUser.uid,
-        userName: currentUser.displayName || currentUser.email.split('@')[0],
-        userEmail: currentUser.email,
-        createdAt: new Date().toISOString(),
+        user_id: currentUser.id,
+        user_name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+        user_email: currentUser.email,
       };
 
       if (editingId) {
-        await updateDoc(doc(db, "summaries", editingId), summaryData);
+        const { error } = await supabase
+          .from('summaries')
+          .update(summaryData)
+          .eq('id', editingId);
+        if (error) throw error;
       } else {
-        await addDoc(collection(db, "summaries"), summaryData);
+        const { error } = await supabase
+          .from('summaries')
+          .insert([summaryData]);
+        if (error) throw error;
       }
 
       resetForm();
@@ -66,7 +89,11 @@ function SummarySection({ currentUser }) {
   const handleDelete = async (summary) => {
     if (!window.confirm("Are you sure you want to delete this summary?")) return;
     try {
-      await deleteDoc(doc(db, "summaries", summary.id));
+      const { error } = await supabase
+        .from('summaries')
+        .delete()
+        .eq('id', summary.id);
+      if (error) throw error;
     } catch (error) {
       console.error("Error deleting summary:", error);
     }
@@ -131,7 +158,7 @@ function SummarySection({ currentUser }) {
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-xl font-bold text-text-primary leading-tight group-hover:text-accent-primary transition-colors">{s.title}</h3>
                 <div className="flex gap-1">
-                  {s.userEmail === currentUser.email && (
+                  {s.user_email === currentUser.email && (
                     <>
                       <button className="p-2 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all opacity-0 group-hover:opacity-100" onClick={() => handleEdit(s)}>
                         <Edit3 size={16}/>
@@ -153,7 +180,7 @@ function SummarySection({ currentUser }) {
                 </div>
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-accent-primary">
                   <UserIcon size={12} />
-                  <span>{s.userName}</span>
+                  <span>{s.user_name}</span>
                 </div>
               </div>
             </Motion.div>
