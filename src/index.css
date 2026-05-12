@@ -138,17 +138,17 @@
 /* KERTAS */
 .envelope-paper {
   position: absolute;
-  top: 15px;
-  left: 20px;
-  width: 320px;
-  height: 210px;
+  top: 10px;
+  left: 10px;
+  width: calc(100% - 20px);
+  height: calc(100% - 20px);
   background: #f8fafc;
   border-radius: 8px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.2), inset 0 0 20px rgba(0,0,0,0.05);
   z-index: 2;
   transform: translateY(0);
-  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 25px 20px;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), height 0.8s ease, top 0.8s ease;
+  padding: 20px;
   box-sizing: border-box;
   overflow-y: auto;
   display: block;
@@ -156,7 +156,20 @@
 }
 
 .envelope-paper.out {
-  transform: translateY(-260px);
+  transform: translateY(-85%);
+  height: 140%;
+  top: -20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 480px) {
+  .envelope-paper {
+    padding: 15px;
+  }
+  .envelope-paper.out {
+    height: 160%;
+    transform: translateY(-90%);
+  }
 }
 
 /* DEPAN (kiri, kanan, bawah) */
