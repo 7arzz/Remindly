@@ -1,13 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Mengambil URL dan Key dari file .env
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-// Kita tetap gunakan nama variabel VITE_SUPABASE_ANON_KEY di kode agar konsisten dengan file .env
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("Supabase credentials missing. Please check your .env file.");
-}
+// Langsung menggunakan URL dan Key agar pasti terbaca
+const supabaseUrl = "https://wdydmrdcxuhtcqqckcmq.supabase.co";
+const supabaseAnonKey = "sb_publishable_6hW4k0K-Vt5sYPemW6aBdQ_ellHx98b";
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
