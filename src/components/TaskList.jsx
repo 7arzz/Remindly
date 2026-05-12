@@ -42,7 +42,7 @@ function TaskList({ tasks, deleteTask, toggleDone, updateTask, filter, sortBy, s
   }
 
   return (
-    <div className="task-list">
+    <div className="task-grid">
       <AnimatePresence mode="popLayout">
         {sortedTasks.map((task) => (
           <TaskCard 
@@ -50,7 +50,6 @@ function TaskList({ tasks, deleteTask, toggleDone, updateTask, filter, sortBy, s
             task={task} 
             deleteTask={deleteTask} 
             toggleDone={toggleDone}
-            updateTask={updateTask}
             currentUser={currentUser}
             onClick={() => onTaskClick(task)}
           />

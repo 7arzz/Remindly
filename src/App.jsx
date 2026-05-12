@@ -9,6 +9,7 @@ import ProgressBar from "./components/ProgressBar";
 import StatsDrawer from "./components/StatsDrawer";
 import TaskInput from "./components/TaskInput";
 import TaskList from "./components/TaskList";
+import EnvelopeModal from "./components/EnvelopeModal";
 import Detail from "./components/Detail";
 import SummarySection from "./components/SummarySection";
 import { auth, db, loginWithGoogle, logout } from "./firebase";
@@ -333,6 +334,15 @@ function App() {
       />
 
       {selectedTaskId && (
+        <EnvelopeModal
+          task={tasks.find((t) => t.id === selectedTaskId)}
+          isOpen={!!selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+        />
+      )}
+
+      {/* Hidden Detail component for administrative actions if needed, or we can just remove it */}
+      {/* {selectedTaskId && (
         <Detail
           task={tasks.find((t) => t.id === selectedTaskId)}
           onClose={() => setSelectedTaskId(null)}
@@ -343,7 +353,7 @@ function App() {
           updateTask={updateTask}
           currentUser={user}
         />
-      )}
+      )} */}
     </div>
   );
 }

@@ -97,3 +97,132 @@
     @apply bg-text-muted/50;
   }
 }
+
+/* 3D Envelope Animation Styles */
+.envelope-modal-overlay {
+  @apply fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4;
+}
+
+.envelope-container {
+  position: relative;
+  width: 360px;
+  height: 240px;
+  perspective: 1500px;
+}
+
+/* BACK */
+.envelope-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(145deg, #1e3a8a, #172554); /* Dark blue premium */
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* KERTAS */
+.envelope-paper {
+  position: absolute;
+  top: 15px;
+  left: 20px;
+  width: 320px;
+  height: 210px;
+  background: #f8fafc;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2), inset 0 0 20px rgba(0,0,0,0.05);
+  z-index: 2;
+  transform: translateY(0);
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 25px 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: block;
+  color: #1e293b;
+}
+
+.envelope-paper.out {
+  transform: translateY(-260px);
+}
+
+/* DEPAN (kiri, kanan, bawah) */
+.envelope-front-left, .envelope-front-right, .envelope-front-bottom {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  border-radius: 12px;
+}
+
+.envelope-front-left {
+  background: linear-gradient(90deg, #1e40af, #2563eb);
+  clip-path: polygon(0 0, 50% 50%, 0 100%);
+}
+
+.envelope-front-right {
+  background: linear-gradient(-90deg, #1e40af, #2563eb);
+  clip-path: polygon(100% 0, 50% 50%, 100% 100%);
+}
+
+.envelope-front-bottom {
+  background: linear-gradient(0deg, #2563eb, #3b82f6);
+  clip-path: polygon(0 100%, 50% 50%, 100% 100%);
+}
+
+/* TOP FLAP */
+.envelope-top-flap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, #1e3a8a, #2563eb);
+  clip-path: polygon(0 0, 100% 0, 50% 50%);
+  transform-origin: top center;
+  transform: rotateX(0deg);
+  z-index: 4;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), z-index 0.1s 0.4s;
+  border-radius: 12px;
+}
+
+.envelope-top-flap.open {
+  transform: rotateX(180deg);
+  z-index: 1;
+}
+
+.envelope-star-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 80px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border-radius: 20px;
+  transform: translate(-50%, -50%) scale(1);
+  z-index: 100;
+  cursor: pointer;
+  transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+  color: #1e3a8a;
+  font-weight: bold;
+  text-align: center;
+  white-space: nowrap;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.envelope-star-btn:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
+}
+
+.envelope-star-btn.side {
+  left: 115%;
+  transform: translate(-50%, -50%) rotate(360deg) scale(0.8);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.task-grid {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6;
+}
