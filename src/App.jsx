@@ -16,6 +16,7 @@ import AddRoadmap from "./components/AddRoadmap";
 import RoadmapCard from "./components/RoadmapCard";
 import { supabase, loginWithGoogle, logout } from "./supabase";
 import { toast } from "sonner";
+import { requestForToken, onMessageListener } from "./firebase";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -47,6 +48,94 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Prevent accidental close
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = ""; // Standard for most browsers
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  // Notification Permission & Reminder Logic
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+    
+    // Listen for foreground messages
+    onMessageListener().then((payload) => {
+      console.log("Message received in foreground:", payload);
+      toast.info(payload.notification.title, {
+        description: payload.notification.body
+      });
+    }).catch((err) => console.log("Failed to receive foreground message: ", err));
+  }, []);
+
+  // Save FCM Token to Supabase
+  const saveFcmToken = useCallback(async (token) => {
+    if (!user || !token) return;
+    try {
+      // Pastikan tabel 'user_push_tokens' sudah dibuat di Supabase
+      const { error } = await supabase
+        .from('user_push_tokens')
+        .upsert({ 
+          user_id: user.id, 
+          fcm_token: token,
+        }, { onConflict: 'user_id' });
+      
+      if (error) {
+        console.warn("Table 'user_push_tokens' might not exist yet. Please create it in Supabase SQL Editor.");
+        throw error;
+      }
+      console.log("FCM Token saved to Supabase");
+    } catch (error) {
+      console.error("Error saving FCM token:", error);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      requestForToken().then(token => {
+        if (token) saveFcmToken(token);
+      });
+    }
+  }, [user, saveFcmToken]);
+
+  useEffect(() => {
+    const notifiedTasks = new Set();
+
+    const checkReminders = () => {
+      const now = new Date();
+      tasks.forEach(task => {
+        if (task.done || !task.reminder_offset || task.reminder_offset <= 0 || notifiedTasks.has(task.id)) {
+          return;
+        }
+
+        const deadline = new Date(task.time);
+        const reminderTime = new Date(deadline.getTime() - task.reminder_offset * 60000);
+
+        if (now >= reminderTime && now < deadline) {
+          if (Notification.permission === "granted") {
+            new Notification("Task Reminder: " + task.text, {
+              body: `Deadline is approaching (${new Date(task.time).toLocaleString()})`,
+              icon: "/bell.jpg"
+            });
+            notifiedTasks.add(task.id);
+            toast.info(`Reminder: ${task.text} is due soon!`);
+          }
+        }
+      });
+    };
+
+    const interval = setInterval(checkReminders, 30000); // Check every 30 seconds
+    checkReminders(); // Initial check
+
+    return () => clearInterval(interval);
+  }, [tasks]);
 
   // Supabase Sync - Real-time Tasks
   useEffect(() => {
@@ -133,7 +222,7 @@ function App() {
   }, [sortBy]);
 
   // Add task
-  const addTask = useCallback(async (text, time, priority, detail, imageUrl) => {
+  const addTask = useCallback(async (text, time, priority, detail, imageUrl, reminderOffset) => {
     if (!user) return false;
     
     try {
@@ -146,7 +235,8 @@ function App() {
         priority: priority || "medium",
         detail: detail || "",
         done: false,
-        image_url: imageUrl || null
+        image_url: imageUrl || null,
+        reminder_offset: reminderOffset || 0
       };
 
       const { error } = await supabase

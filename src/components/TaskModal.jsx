@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Calendar, Clock, User, MessageCircle, CheckCircle, Circle, Trash2 } from "lucide-react";
+import { X, Calendar, Clock, User, MessageCircle, CheckCircle, Circle, Trash2, Bell } from "lucide-react";
 
 const TaskModal = ({ task, isOpen, onClose, onDelete, toggleDone, currentUser }) => {
   if (!task) return null;
@@ -87,6 +87,22 @@ const TaskModal = ({ task, isOpen, onClose, onDelete, toggleDone, currentUser })
                     <span>{task.user_name}</span>
                   </div>
                 </div>
+                {task.reminder_offset > 0 && (
+                  <div className="flex flex-col gap-1 col-span-2 sm:col-span-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Reminder</span>
+                    <div className="flex items-center gap-2 text-sm font-bold text-amber-400">
+                      <Bell size={14} />
+                      <span>
+                        {task.reminder_offset >= 1440 
+                          ? '1 Day' 
+                          : task.reminder_offset >= 60 
+                            ? `${task.reminder_offset / 60} Hour${task.reminder_offset / 60 > 1 ? 's' : ''}` 
+                            : `${task.reminder_offset} Mins`
+                        } before
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Detail / Description */}

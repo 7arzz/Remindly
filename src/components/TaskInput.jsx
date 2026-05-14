@@ -8,6 +8,7 @@ import {
   X,
   Loader2,
   Image as ImageIcon,
+  Bell,
 } from "lucide-react";
 import { supabase } from "../supabase";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ function TaskInput({ addTask }) {
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [reminderOffset, setReminderOffset] = useState(0); // in minutes
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -64,12 +66,13 @@ function TaskInput({ addTask }) {
       }
 
       // 2. Add Task
-      const success = await addTask(text, time, priority, detail, imageUrl);
+      const success = await addTask(text, time, priority, detail, imageUrl, reminderOffset);
       if (success !== false) {
         setText("");
         setTime("");
         setPriority("medium");
         setDetail("");
+        setReminderOffset(0);
         setShowDetail(false);
         setImageFile(null);
         setImagePreview(null);
@@ -188,6 +191,29 @@ function TaskInput({ addTask }) {
             </button>
           </div>
         )}
+
+        {/* Reminder Selector */}
+        <div className="relative group flex-1 sm:flex-none min-w-[150px]">
+          <Bell
+            size={18}
+            className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${
+              reminderOffset > 0 ? "text-accent-primary" : "text-text-muted"
+            }`}
+          />
+          <select
+            value={reminderOffset}
+            onChange={(e) => setReminderOffset(parseInt(e.target.value))}
+            disabled={loading}
+            className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-2.5 pl-11 pr-4 text-sm text-text-primary appearance-none focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all shadow-inner disabled:opacity-50"
+          >
+            <option value={0}>No Reminder</option>
+            <option value={30}>30 Minutes Before</option>
+            <option value={60}>1 Hour Before</option>
+            <option value={120}>2 Hours Before</option>
+            <option value={1440}>1 Day Before</option>
+          </select>
+          <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">

@@ -3,12 +3,12 @@ importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-messaging-comp
 
 // 🔧 Hubungkan Firebase SW dengan project Anda
 firebase.initializeApp({
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyADgLsiTYqfYbvnlt1BI2cQonBTguxlhDU",
+  authDomain: "remindly-579de.firebaseapp.com",
+  projectId: "remindly-579de",
+  storageBucket: "remindly-579de.firebasestorage.app",
+  messagingSenderId: "575184734169",
+  appId: "1:575184734169:web:6c8fbd257a6a686e263bc8"
 });
 
 const messaging = firebase.messaging();
