@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { 
   FileText, Plus, Trash2, Edit3, Calendar, 
-  X, Loader2, User as UserIcon, Search, Image as ImageIcon
+  X, Loader2, User as UserIcon, Search, Image as ImageIcon,
+  Sparkles, Brain
 } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabase";
 import { toast } from "sonner";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 function SummarySection({ currentUser }) {
   const [summaries, setSummaries] = useState([]);
@@ -21,6 +23,7 @@ function SummarySection({ currentUser }) {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
     const fetchSummaries = async () => {
@@ -159,6 +162,56 @@ function SummarySection({ currentUser }) {
     setImageUrl("");
     setEditingId(null);
     setIsModalOpen(false);
+    setIsScanning(false);
+  };
+
+  const handleAIScan = async () => {
+    if (!imageFile) {
+      toast.error("Silakan pilih foto terlebih dahulu.");
+      return;
+    }
+    
+    setIsScanning(true);
+    try {
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      // Convert image to base64
+      const fileData = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.readAsDataURL(imageFile);
+      });
+
+      const prompt = "Tolong analisis gambar catatan/dokumen ini. Berikan judul yang sangat singkat (maks 5 kata) dan isi rangkuman yang jelas dalam bahasa Indonesia. Format jawaban harus seperti ini:\nJudul: [isi judul]\nIsi: [isi rangkuman]";
+
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: fileData,
+            mimeType: imageFile.type
+          }
+        }
+      ]);
+      
+      const response = await result.response;
+      const text = response.text();
+      
+      // Parsing simple text format
+      const titleMatch = text.match(/Judul:\s*(.*)/i);
+      const contentMatch = text.match(/Isi:\s*([\s\S]*)/i);
+      
+      if (titleMatch && titleMatch[1]) setTitle(titleMatch[1].trim());
+      if (contentMatch && contentMatch[1]) setContent(contentMatch[1].trim());
+      
+      toast.success("Berhasil memindai catatan dengan AI!");
+    } catch (error) {
+      console.error("AI Scan Error:", error);
+      toast.error("Gagal memindai dengan AI. Pastikan API Key valid.");
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const handleImageChange = (e) => {
@@ -318,11 +371,21 @@ function SummarySection({ currentUser }) {
                     {imagePreview ? (
                       <div className="relative w-full rounded-xl overflow-hidden border border-border-primary/50 group">
                         <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                          <button 
+                            type="button"
+                            onClick={handleAIScan}
+                            disabled={isScanning}
+                            className="bg-accent-primary text-white px-4 py-2 rounded-full hover:bg-accent-primary/90 transition-all shadow-lg flex items-center gap-2 text-sm font-bold disabled:opacity-50"
+                          >
+                            {isScanning ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                            {isScanning ? "Scanning..." : "Scan with AI"}
+                          </button>
                           <button 
                             type="button"
                             onClick={removeImage}
-                            className="bg-rose-500 text-white p-2 rounded-full hover:bg-rose-600 transition-colors shadow-lg"
+                            disabled={isScanning}
+                            className="bg-rose-500 text-white p-2 rounded-full hover:bg-rose-600 transition-colors shadow-lg disabled:opacity-50"
                           >
                             <Trash2 size={20} />
                           </button>

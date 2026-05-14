@@ -1,6 +1,5 @@
 import { motion as Motion } from "framer-motion";
-import { Trash2, CheckCircle, Circle, Clock } from "lucide-react";
-import envelopeImg from "../assets/envelope.png";
+import { Trash2, CheckCircle, Circle, Clock, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 
 function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick }) {
@@ -13,89 +12,93 @@ function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick }) {
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.8 }}
-      whileHover={{ y: -5, scale: 1.02 }}
-      className="relative group cursor-pointer"
+      whileHover={{ y: -5 }}
+      className={`glass-card flex flex-col p-5 group cursor-pointer relative overflow-hidden ${task.done ? 'opacity-60' : ''}`}
       onClick={onClick}
     >
-      <div className="relative aspect-[3/2] w-full overflow-hidden rounded-2xl bg-bg-card/20 backdrop-blur-sm border border-border-primary/50 group-hover:border-accent-primary/50 transition-all duration-300 shadow-xl">
-        {/* Envelope Image Background */}
-        <img 
-          src={envelopeImg} 
-          alt="Task Envelope" 
-          className={`w-full h-full object-contain p-4 transition-all duration-500 ${task.done ? 'opacity-40 grayscale' : 'opacity-90 group-hover:opacity-100 group-hover:scale-110'}`}
-        />
+      {/* Priority Indicator Line */}
+      <div className={`absolute top-0 left-0 w-1.5 h-full ${
+        task.priority === 'high' ? 'bg-rose-500' :
+        task.priority === 'medium' ? 'bg-amber-500' :
+        'bg-emerald-500'
+      }`} />
 
-        {/* Task Overlay Info */}
-        <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-bg-primary/90 via-bg-primary/40 to-transparent">
-          <h3 className={`text-sm font-bold truncate mb-1 transition-all ${task.done ? 'text-text-muted line-through' : 'text-text-primary group-hover:text-accent-primary'}`}>
-            {task.text}
-          </h3>
-          
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1 text-[10px] text-text-secondary">
-              <Clock size={10} className="text-accent-primary/60" />
-              <span>{new Date(task.time).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
-            </div>
-            
-            <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
-              task.priority === 'high' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
-              task.priority === 'medium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-              'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-            }`}>
-              {task.priority}
-            </div>
-          </div>
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full animate-pulse ${
+            task.priority === 'high' ? 'bg-rose-500' :
+            task.priority === 'medium' ? 'bg-amber-500' :
+            'bg-emerald-500'
+          }`} />
+          <span className={`text-[10px] font-black uppercase tracking-widest ${
+            task.priority === 'high' ? 'text-rose-400' :
+            task.priority === 'medium' ? 'text-amber-400' :
+            'text-emerald-400'
+          }`}>
+            {task.priority}
+          </span>
         </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleDone(task.id);
+          }}
+          className={`p-1 rounded-lg transition-all ${
+            task.done 
+              ? "text-accent-primary bg-accent-primary/10" 
+              : "text-text-muted hover:text-accent-primary hover:bg-accent-primary/10"
+          }`}
+        >
+          {task.done ? <CheckCircle size={18} /> : <Circle size={18} />}
+        </button>
+      </div>
 
-        {/* Status Badge */}
-        <div className="absolute top-3 left-3">
+      <h3 className={`text-lg font-bold leading-tight mb-3 transition-all ${task.done ? 'text-text-muted line-through' : 'text-text-primary group-hover:text-accent-primary'}`}>
+        {task.text}
+      </h3>
+
+      {task.detail && (
+        <div className="flex items-center gap-1.5 text-text-muted text-xs mb-4">
+          <MessageSquare size={12} />
+          <span className="truncate">{task.detail}</span>
+        </div>
+      )}
+
+      <div className="mt-auto pt-4 border-t border-border-primary/30 flex justify-between items-center">
+        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-muted">
+          <Clock size={12} className={isExpired && !task.done ? "text-rose-500" : "text-accent-primary/40"} />
+          <span className={isExpired && !task.done ? "text-rose-400" : ""}>
+            {new Date(task.time).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+          </span>
+        </div>
+        
+        {isOwner && (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              toggleDone(task.id);
+              toast("Delete Task?", {
+                description: "Are you sure you want to delete this task?",
+                action: {
+                  label: "Delete",
+                  onClick: () => deleteTask(task.id)
+                },
+                cancel: { label: "Cancel" }
+              });
             }}
-            className={`p-1.5 rounded-full backdrop-blur-md border transition-all ${
-              task.done 
-                ? "bg-accent-primary/20 border-accent-primary/50 text-accent-primary" 
-                : "bg-black/20 border-white/10 text-white/40 hover:text-white"
-            }`}
+            className="p-1.5 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
           >
-            {task.done ? <CheckCircle size={14} /> : <Circle size={14} />}
+            <Trash2 size={14} />
           </button>
-        </div>
-
-        {/* Delete Button (Owner Only) */}
-        {isOwner && (
-          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toast("Delete Task?", {
-                  description: "Are you sure you want to delete this task?",
-                  action: {
-                    label: "Delete",
-                    onClick: () => deleteTask(task.id)
-                  },
-                  cancel: {
-                    label: "Cancel"
-                  }
-                });
-              }}
-              className="p-1.5 rounded-full bg-rose-500/20 border border-rose-500/50 text-rose-400 hover:bg-rose-500 hover:text-white transition-all"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        )}
-
-        {isExpired && !task.done && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] pointer-events-none">
-            <span className="px-3 py-1 bg-rose-600 text-white text-[10px] font-black tracking-tighter rounded-sm shadow-lg border-2 border-white/20">
-              EXPIRED
-            </span>
-          </div>
         )}
       </div>
+
+      {isExpired && !task.done && (
+        <div className="absolute top-2 right-2 rotate-12">
+          <span className="px-2 py-0.5 bg-rose-500 text-white text-[8px] font-black tracking-tighter rounded border border-white/20 shadow-lg">
+            OVERDUE
+          </span>
+        </div>
+      )}
     </Motion.div>
   );
 }

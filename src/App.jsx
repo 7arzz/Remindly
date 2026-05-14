@@ -9,7 +9,7 @@ import ProgressBar from "./components/ProgressBar";
 import StatsDrawer from "./components/StatsDrawer";
 import TaskInput from "./components/TaskInput";
 import TaskList from "./components/TaskList";
-import EnvelopeModal from "./components/EnvelopeModal";
+import TaskModal from "./components/TaskModal";
 import Detail from "./components/Detail";
 import SummarySection from "./components/SummarySection";
 import AddRoadmap from "./components/AddRoadmap";
@@ -612,10 +612,13 @@ function App() {
       />
 
       {selectedTaskId && (
-        <EnvelopeModal
+        <TaskModal
           task={tasks.find((t) => t.id === selectedTaskId)}
           isOpen={!!selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
+          onDelete={deleteTask}
+          toggleDone={toggleDone}
+          currentUser={user}
         />
       )}
 
