@@ -12,13 +12,17 @@ import TaskList from "./components/TaskList";
 import EnvelopeModal from "./components/EnvelopeModal";
 import Detail from "./components/Detail";
 import SummarySection from "./components/SummarySection";
+import AddRoadmap from "./components/AddRoadmap";
+import RoadmapCard from "./components/RoadmapCard";
 import { supabase, loginWithGoogle, logout } from "./supabase";
+import { toast } from "sonner";
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
-  const [activeTab, setActiveTab] = useState("tasks"); // "tasks" or "summaries"
+  const [roadmaps, setRoadmaps] = useState([]);
+  const [activeTab, setActiveTab] = useState("tasks"); // "tasks", "summaries", or "roadmap"
   const [filter, setFilter] = useState(
     () => localStorage.getItem("remindly_filter") || "all",
   );
@@ -83,6 +87,43 @@ function App() {
     };
   }, [user]);
 
+  // Supabase Sync - Real-time Roadmaps
+  useEffect(() => {
+    if (!user) {
+      setRoadmaps([]);
+      return;
+    }
+
+    const fetchRoadmaps = async () => {
+      const { data, error } = await supabase
+        .from('roadmaps')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) console.error("Error fetching roadmaps:", error);
+      else setRoadmaps(data || []);
+    };
+
+    fetchRoadmaps();
+
+    const channel = supabase
+      .channel('roadmaps_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'roadmaps' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setRoadmaps(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setRoadmaps(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
+        } else if (payload.eventType === 'DELETE') {
+          setRoadmaps(prev => prev.filter(r => r.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   useEffect(() => {
     localStorage.setItem("remindly_filter", filter);
   }, [filter]);
@@ -92,7 +133,7 @@ function App() {
   }, [sortBy]);
 
   // Add task
-  const addTask = useCallback(async (text, time, priority, detail) => {
+  const addTask = useCallback(async (text, time, priority, detail, imageUrl) => {
     if (!user) return false;
     
     try {
@@ -105,6 +146,7 @@ function App() {
         priority: priority || "medium",
         detail: detail || "",
         done: false,
+        image_url: imageUrl || null
       };
 
       const { error } = await supabase
@@ -122,7 +164,7 @@ function App() {
       return true;
     } catch (error) {
       console.error("Error adding task: ", error);
-      alert("Failed to add task. Please check your connection.");
+      toast.error("Failed to add task. Please check your connection.");
       return false;
     }
   }, [user]);
@@ -182,19 +224,185 @@ function App() {
     }
   }, [user, tasks]);
 
+  // Roadmap Actions
+  const addRoadmap = async (title) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('roadmaps')
+        .insert([{ 
+          title, 
+          user_id: user.id, 
+          steps: [],
+          created_at: new Date().toISOString() 
+        }]);
+      if (error) throw error;
+      toast.success("Roadmap created successfully!");
+    } catch (error) {
+      console.error("Error adding roadmap:", error);
+      toast.error("Failed to create roadmap.");
+    }
+  };
+
+  const deleteRoadmap = async (id) => {
+    if (!user) return;
+    
+    toast("Delete Roadmap?", {
+      description: "Are you sure you want to delete this roadmap? This action cannot be undone.",
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          try {
+            const { error } = await supabase
+              .from('roadmaps')
+              .delete()
+              .eq('id', id);
+            if (error) throw error;
+            toast.success("Roadmap deleted.");
+          } catch (error) {
+            console.error("Error deleting roadmap:", error);
+            toast.error("Failed to delete roadmap.");
+          }
+        }
+      },
+      cancel: {
+        label: "Cancel"
+      }
+    });
+  };
+
+  const editRoadmap = async (id, title) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('roadmaps')
+        .update({ title })
+        .eq('id', id);
+      if (error) throw error;
+      toast.success("Roadmap title updated.");
+    } catch (error) {
+      console.error("Error editing roadmap:", error);
+      toast.error("Failed to update roadmap title.");
+    }
+  };
+
+  const addStep = async (roadmapId, stepText) => {
+    if (!user) return;
+    const roadmap = roadmaps.find(r => r.id === roadmapId);
+    if (!roadmap) return;
+
+    const newStep = {
+      id: crypto.randomUUID(),
+      text: stepText,
+      done: false
+    };
+
+    try {
+      const { error } = await supabase
+        .from('roadmaps')
+        .update({ steps: [...roadmap.steps, newStep] })
+        .eq('id', roadmapId);
+      if (error) throw error;
+      toast.success("Step added!");
+    } catch (error) {
+      console.error("Error adding step:", error);
+      toast.error("Failed to add step.");
+    }
+  };
+
+  const toggleStep = async (roadmapId, stepId) => {
+    if (!user) return;
+    const roadmap = roadmaps.find(r => r.id === roadmapId);
+    if (!roadmap) return;
+
+    const updatedSteps = roadmap.steps.map(s => 
+      s.id === stepId ? { ...s, done: !s.done } : s
+    );
+
+    try {
+      const { error } = await supabase
+        .from('roadmaps')
+        .update({ steps: updatedSteps })
+        .eq('id', roadmapId);
+      if (error) throw error;
+
+      const isNowDone = updatedSteps.find(s => s.id === stepId).done;
+      if (isNowDone) {
+        confetti({
+          particleCount: 40,
+          spread: 50,
+          origin: { y: 0.7 },
+          colors: ["#64ffda", "#00bcd4"]
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling step:", error);
+    }
+  };
+
+  const deleteStep = async (roadmapId, stepId) => {
+    if (!user) return;
+    const roadmap = roadmaps.find(r => r.id === roadmapId);
+    if (!roadmap) return;
+
+    const updatedSteps = roadmap.steps.filter(s => s.id !== stepId);
+
+    try {
+      const { error } = await supabase
+        .from('roadmaps')
+        .update({ steps: updatedSteps })
+        .eq('id', roadmapId);
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error deleting step:", error);
+    }
+  };
+
+  const reorderStep = async (roadmapId, fromIdx, toIdx) => {
+    if (!user) return;
+    const roadmap = roadmaps.find(r => r.id === roadmapId);
+    if (!roadmap) return;
+
+    const updatedSteps = [...roadmap.steps];
+    const [moved] = updatedSteps.splice(fromIdx, 1);
+    updatedSteps.splice(toIdx, 0, moved);
+
+    try {
+      const { error } = await supabase
+        .from('roadmaps')
+        .update({ steps: updatedSteps })
+        .eq('id', roadmapId);
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error reordering steps:", error);
+    }
+  };
+
   const clearAll = useCallback(async () => {
     if (!user) return;
-    if (window.confirm("Are you sure you want to clear ALL PUBLIC tasks?")) {
-      try {
-        const { error } = await supabase
-          .from('tasks')
-          .delete()
-          .not('id', 'is', null); // Delete all
-        if (error) throw error;
-      } catch (error) {
-        console.error("Error clearing tasks: ", error);
+    
+    toast("Clear All Tasks?", {
+      description: "Are you sure you want to clear ALL PUBLIC tasks? This cannot be undone.",
+      action: {
+        label: "Clear All",
+        onClick: async () => {
+          try {
+            const { error } = await supabase
+              .from('tasks')
+              .delete()
+              .not('id', 'is', null); // Delete all
+            if (error) throw error;
+            toast.success("All public tasks cleared.");
+          } catch (error) {
+            console.error("Error clearing tasks: ", error);
+            toast.error("Failed to clear tasks.");
+          }
+        }
+      },
+      cancel: {
+        label: "Cancel"
       }
-    }
+    });
   }, [user]);
 
   const handleLogin = async () => {
@@ -202,7 +410,7 @@ function App() {
       await loginWithGoogle();
     } catch (error) {
       console.error("Login error:", error);
-      alert(`Login failed: ${error.message}`);
+      toast.error(`Login failed: ${error.message}`);
     }
   };
 
@@ -304,6 +512,17 @@ function App() {
           <FileText size={18} />
           <span className="text-sm sm:text-base">Summaries</span>
         </button>
+        <button 
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold transition-all duration-300 ${
+            activeTab === "roadmap" 
+            ? "bg-bg-card text-accent-primary shadow-lg border border-border-primary" 
+            : "text-text-secondary hover:text-text-primary hover:bg-bg-secondary"
+          }`}
+          onClick={() => setActiveTab("roadmap")}
+        >
+          <Globe size={18} />
+          <span className="text-sm sm:text-base">Roadmap</span>
+        </button>
       </nav>
 
       {activeTab === "tasks" ? (
@@ -346,9 +565,42 @@ function App() {
             onTaskClick={(task) => setSelectedTaskId(task.id)}
           />
         </div>
-      ) : (
+      ) : activeTab === "summaries" ? (
         <div className="fadeIn">
           <SummarySection currentUser={user} />
+        </div>
+      ) : (
+        <div className="roadmap-container fadeIn">
+          <AddRoadmap onAdd={addRoadmap} />
+          
+          <div className="flex flex-col gap-6">
+            {roadmaps.length === 0 ? (
+              <div className="glass-card p-12 text-center flex flex-col items-center gap-4">
+                <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center text-text-muted">
+                  <Globe size={32} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">No roadmaps yet</h3>
+                  <p className="text-text-secondary">Create your first roadmap to start tracking long-term goals.</p>
+                </div>
+              </div>
+            ) : (
+              roadmaps.map((roadmap, idx) => (
+                <RoadmapCard
+                  key={roadmap.id}
+                  roadmap={roadmap}
+                  index={idx}
+                  total={roadmaps.length}
+                  onDeleteRoadmap={deleteRoadmap}
+                  onEditRoadmap={editRoadmap}
+                  onAddStep={addStep}
+                  onToggleStep={toggleStep}
+                  onDeleteStep={deleteStep}
+                  onReorderStep={reorderStep}
+                />
+              ))
+            )}
+          </div>
         </div>
       )}
 

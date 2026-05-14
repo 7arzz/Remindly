@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { 
   FileText, Plus, Trash2, Edit3, Calendar, 
-  X, Loader2, User as UserIcon, Search 
+  X, Loader2, User as UserIcon, Search, Image as ImageIcon
 } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabase";
+import { toast } from "sonner";
 
 function SummarySection({ currentUser }) {
   const [summaries, setSummaries] = useState([]);
@@ -17,6 +18,9 @@ function SummarySection({ currentUser }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageUrl, setImageUrl] = useState("");
 
   useEffect(() => {
     const fetchSummaries = async () => {
@@ -55,10 +59,34 @@ function SummarySection({ currentUser }) {
     setLoading(true);
 
     try {
+      let finalImageUrl = imageUrl;
+
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${currentUser.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('remindly_assets')
+          .upload(filePath, imageFile);
+
+        if (uploadError) {
+          console.error("Upload error details:", uploadError);
+          throw new Error("Gagal mengupload gambar. Pastikan bucket 'remindly_assets' ada dan public.");
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('remindly_assets')
+          .getPublicUrl(filePath);
+
+        finalImageUrl = publicUrlData.publicUrl;
+      }
+
       const summaryData = {
         title,
         content,
         date,
+        image_url: finalImageUrl,
         user_id: currentUser.id,
         user_name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
         user_email: currentUser.email,
@@ -80,23 +108,35 @@ function SummarySection({ currentUser }) {
       resetForm();
     } catch (error) {
       console.error("Error saving summary:", error);
-      alert("Error saving summary.");
+      toast.error(error.message || "Error saving summary.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (summary) => {
-    if (!window.confirm("Are you sure you want to delete this summary?")) return;
-    try {
-      const { error } = await supabase
-        .from('summaries')
-        .delete()
-        .eq('id', summary.id);
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error deleting summary:", error);
-    }
+    toast("Delete Summary?", {
+      description: "Are you sure you want to delete this summary? This action cannot be undone.",
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          try {
+            const { error } = await supabase
+              .from('summaries')
+              .delete()
+              .eq('id', summary.id);
+            if (error) throw error;
+            toast.success("Summary deleted.");
+          } catch (error) {
+            console.error("Error deleting summary:", error);
+            toast.error("Failed to delete summary.");
+          }
+        }
+      },
+      cancel: {
+        label: "Cancel"
+      }
+    });
   };
 
   const handleEdit = (summary) => {
@@ -104,6 +144,9 @@ function SummarySection({ currentUser }) {
     setTitle(summary.title);
     setContent(summary.content);
     setDate(summary.date);
+    setImageUrl(summary.image_url || "");
+    setImagePreview(summary.image_url || null);
+    setImageFile(null);
     setIsModalOpen(true);
   };
 
@@ -111,8 +154,29 @@ function SummarySection({ currentUser }) {
     setTitle("");
     setContent("");
     setDate(new Date().toISOString().split('T')[0]);
+    setImageFile(null);
+    setImagePreview(null);
+    setImageUrl("");
     setEditingId(null);
     setIsModalOpen(false);
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setImageUrl("");
   };
 
   const filteredSummaries = summaries
@@ -170,6 +234,12 @@ function SummarySection({ currentUser }) {
                   )}
                 </div>
               </div>
+              
+              {s.image_url && (
+                <div className="mb-4 rounded-xl overflow-hidden bg-bg-secondary/30 relative">
+                  <img src={s.image_url} alt={s.title} className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105" />
+                </div>
+              )}
               
               <p className="text-text-secondary text-sm leading-relaxed mb-6 line-clamp-3">{s.content}</p>
               
@@ -241,6 +311,38 @@ function SummarySection({ currentUser }) {
                       className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl p-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary transition-all min-h-[120px] resize-none"
                       required
                     />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-text-muted ml-1">Photo (Optional)</label>
+                    {imagePreview ? (
+                      <div className="relative w-full rounded-xl overflow-hidden border border-border-primary/50 group">
+                        <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button 
+                            type="button"
+                            onClick={removeImage}
+                            className="bg-rose-500 text-white p-2 rounded-full hover:bg-rose-600 transition-colors shadow-lg"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="w-full bg-bg-secondary/50 border border-border-primary/50 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-accent-primary hover:bg-accent-primary/5 transition-all">
+                        <div className="p-3 bg-bg-primary rounded-full text-accent-primary/80 mb-2">
+                          <ImageIcon size={24} />
+                        </div>
+                        <span className="text-sm font-medium text-text-primary">Click to upload an image</span>
+                        <span className="text-xs text-text-muted">JPEG, PNG, JPG</span>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
                   </div>
 
                   <button 

@@ -1,6 +1,7 @@
 import { motion as Motion } from "framer-motion";
 import { Trash2, CheckCircle, Circle, Clock } from "lucide-react";
 import envelopeImg from "../assets/envelope.png";
+import { toast } from "sonner";
 
 function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick }) {
   const isOwner = currentUser && task.user_email === currentUser.email;
@@ -69,7 +70,16 @@ function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick }) {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                deleteTask(task.id);
+                toast("Delete Task?", {
+                  description: "Are you sure you want to delete this task?",
+                  action: {
+                    label: "Delete",
+                    onClick: () => deleteTask(task.id)
+                  },
+                  cancel: {
+                    label: "Cancel"
+                  }
+                });
               }}
               className="p-1.5 rounded-full bg-rose-500/20 border border-rose-500/50 text-rose-400 hover:bg-rose-500 hover:text-white transition-all"
             >

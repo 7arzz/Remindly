@@ -71,6 +71,24 @@ const EnvelopeModal = ({ task, isOpen, onClose }) => {
                     {task.detail || "No additional details provided."}
                   </p>
                 </section>
+
+                {task.image_url && (
+                  <motion.section 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Attached Image</h3>
+                    <div className="rounded-xl overflow-hidden border border-slate-100 shadow-sm group relative">
+                      <img 
+                        src={task.image_url} 
+                        alt="Task Attachment" 
+                        className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </motion.section>
+                )}
                 
                 {(task.answers && task.answers.length > 0) ? (
                   <section>

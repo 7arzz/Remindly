@@ -8,19 +8,19 @@
     --bg-secondary: #0a192f;
     --bg-card: #112240;
     --bg-card-hover: #1d2d50;
-    
+
     --accent-primary: #64ffda;
     --accent-secondary: #00bcd4;
     --accent-glow: rgba(100, 255, 218, 0.2);
-    
+
     --text-primary: #e6f1ff;
     --text-secondary: #8892b0;
     --text-muted: #495670;
-    
+
     --border-primary: #233554;
     --border-accent: #64ffda;
-    
-    --font-main: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+
+    --font-main: "Outfit", "Inter", system-ui, -apple-system, sans-serif;
   }
 
   body {
@@ -33,7 +33,7 @@
   .glass-card {
     @apply bg-bg-card/40 backdrop-blur-md border border-border-primary rounded-2xl transition-all duration-300;
   }
-  
+
   .glass-card:hover {
     @apply border-accent-primary/30 shadow-lg shadow-accent-primary/5;
   }
@@ -67,8 +67,14 @@
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fadeIn {
@@ -83,7 +89,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
@@ -145,10 +151,15 @@
   height: calc(100% - 20px);
   background: #f8fafc;
   border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2), inset 0 0 20px rgba(0,0,0,0.05);
+  box-shadow:
+    0 5px 15px rgba(0, 0, 0, 0.2),
+    inset 0 0 20px rgba(0, 0, 0, 0.05);
   z-index: 2;
   transform: translateY(0);
-  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), height 0.8s ease, top 0.8s ease;
+  transition:
+    transform 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.8s ease,
+    top 0.8s ease;
   padding: 20px;
   box-sizing: border-box;
   overflow-y: auto;
@@ -174,7 +185,9 @@
 }
 
 /* DEPAN (kiri, kanan, bawah) */
-.envelope-front-left, .envelope-front-right, .envelope-front-bottom {
+.envelope-front-left,
+.envelope-front-right,
+.envelope-front-bottom {
   position: absolute;
   width: 100%;
   height: 100%;
@@ -209,7 +222,9 @@
   transform-origin: top center;
   transform: rotateX(0deg);
   z-index: 4;
-  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), z-index 0.1s 0.4s;
+  transition:
+    transform 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+    z-index 0.1s 0.4s;
   border-radius: 12px;
 }
 
@@ -252,6 +267,170 @@
 
 .task-grid {
   @apply grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 p-4 sm:p-6;
+}
+
+/* Roadmap Styles */
+.roadmap-container {
+  @apply flex flex-col gap-8;
+}
+
+.add-roadmap-container {
+  @apply glass-card p-6 flex flex-col gap-4;
+}
+
+.section-label {
+  @apply text-xs font-bold text-accent-primary uppercase tracking-widest mb-1 opacity-80;
+}
+
+.add-form {
+  @apply flex gap-3;
+}
+
+.main-input {
+  @apply flex-1 bg-bg-secondary/50 border border-border-primary/50 rounded-xl px-4 py-3 
+         text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary/50
+         transition-all duration-200;
+}
+
+.add-btn {
+  @apply btn-primary px-5 whitespace-nowrap;
+}
+
+.roadmap-card {
+  @apply glass-card p-6 flex flex-col gap-6;
+}
+
+.card-header {
+  @apply flex justify-between items-start;
+}
+
+.card-title-area {
+  @apply flex flex-col gap-1;
+}
+
+.card-number {
+  @apply text-[10px] font-bold text-accent-primary/60 uppercase tracking-tighter;
+}
+
+.card-header h3 {
+  @apply text-xl font-bold text-text-primary;
+}
+
+.card-actions {
+  @apply flex gap-2;
+}
+
+.btn-icon {
+  @apply icon-btn;
+}
+
+.btn-danger {
+  @apply hover:text-red-400 hover:bg-red-400/10;
+}
+
+.btn-success {
+  @apply hover:text-accent-primary hover:bg-accent-primary/10;
+}
+
+.progress-container {
+  @apply flex flex-col gap-2;
+}
+
+.progress-info {
+  @apply flex justify-between text-xs font-medium text-text-secondary;
+}
+
+.progress-percent {
+  @apply text-accent-primary;
+}
+
+.pb-bg {
+  @apply h-1.5 bg-bg-secondary/50 rounded-full overflow-hidden border border-border-primary/30;
+}
+
+.pb-fill {
+  @apply h-full bg-gradient-to-r from-accent-primary to-accent-secondary;
+}
+
+.roadmap-flow-container {
+  @apply min-h-[100px] flex items-center;
+}
+
+.roadmap-flow {
+  @apply flex gap-4 overflow-x-auto pb-4 custom-scrollbar;
+}
+
+.empty-steps {
+  @apply text-sm text-text-muted italic;
+}
+
+.step-item-wrapper {
+  @apply flex items-center gap-4 flex-shrink-0;
+}
+
+.flow-connector {
+  @apply w-8 h-0.5 bg-border-primary/50 transition-colors duration-500;
+}
+
+.flow-connector.active {
+  @apply bg-accent-primary shadow-[0_0_10px_rgba(100,255,218,0.5)];
+}
+
+.step-card {
+  @apply relative w-48 bg-bg-secondary/40 border border-border-primary/50 rounded-xl p-4 
+         hover:border-accent-primary/30 transition-all duration-300 cursor-pointer;
+}
+
+.step-card.done {
+  @apply border-accent-primary/40 bg-accent-primary/5;
+}
+
+.step-number {
+  @apply text-[9px] font-bold text-text-muted uppercase tracking-wider mb-2;
+}
+
+.step-content {
+  @apply flex gap-3 items-start mb-4;
+}
+
+.step-check-mark {
+  @apply text-accent-primary mt-0.5 flex-shrink-0;
+}
+
+.step-text {
+  @apply text-sm font-medium text-text-primary leading-tight line-clamp-2;
+}
+
+.step-actions {
+  @apply flex justify-end gap-1.5;
+}
+
+.btn-step {
+  @apply p-1.5 rounded-md transition-all duration-200;
+}
+
+.btn-step-pending {
+  @apply text-text-muted hover:text-text-primary hover:bg-bg-card-hover;
+}
+
+.btn-step-done {
+  @apply text-accent-primary/60 hover:text-accent-primary hover:bg-accent-primary/10;
+}
+
+.btn-step-delete {
+  @apply text-text-muted hover:text-red-400 hover:bg-red-400/10;
+}
+
+.add-step-form {
+  @apply flex gap-2 pt-2 border-t border-border-primary/30;
+}
+
+.step-input {
+  @apply flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-muted focus:outline-none;
+}
+
+.edit-title-form {
+  @apply flex items-center gap-2;
 }
 
 @media (max-width: 480px) {

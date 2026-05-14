@@ -2,6 +2,7 @@ import { motion as Motion, AnimatePresence } from "framer-motion";
 import { X, BookOpen, Clock, AlertCircle, FileText, User as UserIcon, Trash2 } from "lucide-react";
 import Answer from "./Answer";
 import { supabase } from "../supabase";
+import { toast } from "sonner";
 
 function Detail({ task, onClose, updateTask, currentUser, onDelete }) {
   if (!task) return null;
@@ -76,9 +77,18 @@ function Detail({ task, onClose, updateTask, currentUser, onDelete }) {
                   <button 
                     className="p-2 rounded-xl bg-bg-secondary text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90" 
                     onClick={() => {
-                      if (window.confirm("Are you sure you want to delete this task?")) {
-                        onDelete();
-                      }
+                      toast("Delete Task?", {
+                        description: "Are you sure you want to delete this task? This action cannot be undone.",
+                        action: {
+                          label: "Delete",
+                          onClick: () => {
+                            onDelete();
+                          }
+                        },
+                        cancel: {
+                          label: "Cancel"
+                        }
+                      });
                     }}
                     title="Delete Task"
                   >
@@ -96,14 +106,25 @@ function Detail({ task, onClose, updateTask, currentUser, onDelete }) {
             </div>
 
             {task.detail && (
-              <div className="bg-bg-secondary/30 border border-border-primary/50 rounded-2xl p-5 sm:p-6 fadeIn">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-accent-primary/60 mb-3">
-                  <FileText size={14} />
+              <div className="bg-bg-secondary/30 p-5 rounded-2xl border border-border-primary/50 flex flex-col gap-3 fadeIn">
+                <div className="flex items-center gap-2 text-text-muted text-xs font-bold uppercase tracking-wider">
+                  <FileText size={14} className="text-accent-primary" />
                   <span>Detail Description</span>
                 </div>
-                <p className="text-text-secondary text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
+                <p className="text-text-secondary leading-relaxed text-sm whitespace-pre-wrap">
                   {task.detail}
                 </p>
+              </div>
+            )}
+            
+            {task.image_url && (
+              <div className="rounded-2xl overflow-hidden border border-border-primary/50 shadow-2xl group relative fadeIn">
+                <img 
+                  src={task.image_url} 
+                  alt="Task illustration" 
+                  className="w-full h-auto max-h-[400px] object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/40 to-transparent pointer-events-none" />
               </div>
             )}
 
