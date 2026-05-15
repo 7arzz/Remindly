@@ -1,10 +1,21 @@
 import { useState, useEffect } from "react";
-import { 
-  FileText, Plus, Trash2, Edit3, Calendar, 
-  X, Loader2, User as UserIcon, Search, Image as ImageIcon,
-  Sparkles, Brain, MessageSquare
+import {
+  FileText,
+  Plus,
+  Trash2,
+  Edit3,
+  Calendar,
+  X,
+  Loader2,
+  User as UserIcon,
+  Search,
+  Image as ImageIcon,
+  Sparkles,
+  Brain,
+  MessageSquare,
 } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import { supabase } from "../supabase";
 import { toast } from "sonner";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -20,7 +31,7 @@ function SummarySection({ currentUser }) {
   // Form State
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
@@ -32,10 +43,10 @@ function SummarySection({ currentUser }) {
   useEffect(() => {
     const fetchSummaries = async () => {
       const { data, error } = await supabase
-        .from('summaries')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
+        .from("summaries")
+        .select("*")
+        .order("created_at", { ascending: false });
+
       if (error) console.error("Error fetching summaries:", error);
       else setSummaries(data || []);
     };
@@ -43,16 +54,22 @@ function SummarySection({ currentUser }) {
     fetchSummaries();
 
     const channel = supabase
-      .channel('summaries_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'summaries' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setSummaries(prev => [payload.new, ...prev]);
-        } else if (payload.eventType === 'UPDATE') {
-          setSummaries(prev => prev.map(s => s.id === payload.new.id ? payload.new : s));
-        } else if (payload.eventType === 'DELETE') {
-          setSummaries(prev => prev.filter(s => s.id !== payload.old.id));
-        }
-      })
+      .channel("summaries_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "summaries" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setSummaries((prev) => [payload.new, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            setSummaries((prev) =>
+              prev.map((s) => (s.id === payload.new.id ? payload.new : s)),
+            );
+          } else if (payload.eventType === "DELETE") {
+            setSummaries((prev) => prev.filter((s) => s.id !== payload.old.id));
+          }
+        },
+      )
       .subscribe();
 
     return () => {
@@ -69,21 +86,23 @@ function SummarySection({ currentUser }) {
       let finalImageUrl = imageUrl;
 
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
+        const fileExt = imageFile.name.split(".").pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${currentUser.id}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('remindly_assets')
+          .from("remindly_assets")
           .upload(filePath, imageFile);
 
         if (uploadError) {
           console.error("Upload error details:", uploadError);
-          throw new Error("Gagal mengupload gambar. Pastikan bucket 'remindly_assets' ada dan public.");
+          throw new Error(
+            "Gagal mengupload gambar. Pastikan bucket 'remindly_assets' ada dan public.",
+          );
         }
 
         const { data: publicUrlData } = supabase.storage
-          .from('remindly_assets')
+          .from("remindly_assets")
           .getPublicUrl(filePath);
 
         finalImageUrl = publicUrlData.publicUrl;
@@ -95,19 +114,21 @@ function SummarySection({ currentUser }) {
         date,
         image_url: finalImageUrl,
         user_id: currentUser.id,
-        user_name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+        user_name:
+          currentUser.user_metadata?.full_name ||
+          currentUser.email.split("@")[0],
         user_email: currentUser.email,
       };
 
       if (editingId) {
         const { error } = await supabase
-          .from('summaries')
+          .from("summaries")
           .update(summaryData)
-          .eq('id', editingId);
+          .eq("id", editingId);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('summaries')
+          .from("summaries")
           .insert([summaryData]);
         if (error) throw error;
       }
@@ -123,26 +144,27 @@ function SummarySection({ currentUser }) {
 
   const handleDelete = async (summary) => {
     toast("Delete Summary?", {
-      description: "Are you sure you want to delete this summary? This action cannot be undone.",
+      description:
+        "Are you sure you want to delete this summary? This action cannot be undone.",
       action: {
         label: "Delete",
         onClick: async () => {
           try {
             const { error } = await supabase
-              .from('summaries')
+              .from("summaries")
               .delete()
-              .eq('id', summary.id);
+              .eq("id", summary.id);
             if (error) throw error;
             toast.success("Summary deleted.");
           } catch (error) {
             console.error("Error deleting summary:", error);
             toast.error("Failed to delete summary.");
           }
-        }
+        },
       },
       cancel: {
-        label: "Cancel"
-      }
+        label: "Cancel",
+      },
     });
   };
 
@@ -160,7 +182,7 @@ function SummarySection({ currentUser }) {
   const resetForm = () => {
     setTitle("");
     setContent("");
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(new Date().toISOString().split("T")[0]);
     setImageFile(null);
     setImagePreview(null);
     setImageUrl("");
@@ -174,7 +196,7 @@ function SummarySection({ currentUser }) {
       toast.error("Silakan pilih foto terlebih dahulu.");
       return;
     }
-    
+
     setIsScanning(true);
     try {
       const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
@@ -183,32 +205,33 @@ function SummarySection({ currentUser }) {
       // Convert image to base64
       const fileData = await new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onloadend = () => resolve(reader.result.split(",")[1]);
         reader.readAsDataURL(imageFile);
       });
 
-      const prompt = "Tolong analisis gambar catatan/dokumen ini. Berikan judul yang sangat singkat (maks 5 kata) dan isi rangkuman yang jelas dalam bahasa Indonesia. Format jawaban harus seperti ini:\nJudul: [isi judul]\nIsi: [isi rangkuman]";
+      const prompt =
+        "Tolong analisis gambar catatan/dokumen ini. Berikan judul yang sangat singkat (maks 5 kata) dan isi rangkuman yang jelas dalam bahasa Indonesia. Format jawaban harus seperti ini:\nJudul: [isi judul]\nIsi: [isi rangkuman]";
 
       const result = await model.generateContent([
         prompt,
         {
           inlineData: {
             data: fileData,
-            mimeType: imageFile.type
-          }
-        }
+            mimeType: imageFile.type,
+          },
+        },
       ]);
-      
+
       const response = await result.response;
       const text = response.text();
-      
+
       // Parsing simple text format
       const titleMatch = text.match(/Judul:\s*(.*)/i);
       const contentMatch = text.match(/Isi:\s*([\s\S]*)/i);
-      
+
       if (titleMatch && titleMatch[1]) setTitle(titleMatch[1].trim());
       if (contentMatch && contentMatch[1]) setContent(contentMatch[1].trim());
-      
+
       toast.success("Berhasil memindai catatan dengan AI!");
     } catch (error) {
       console.error("AI Scan Error:", error);
@@ -266,27 +289,31 @@ function SummarySection({ currentUser }) {
   };
 
   const filteredSummaries = summaries
-    .filter(s => 
-      s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.content.toLowerCase().includes(searchQuery.toLowerCase())
+    .filter(
+      (s) =>
+        s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.content.toLowerCase().includes(searchQuery.toLowerCase()),
     )
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   return (
     <div className="flex flex-col gap-6 sm:gap-8">
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1 group">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent-primary transition-colors" />
-          <input 
-            type="text" 
-            placeholder="Search summaries..." 
+          <Search
+            size={18}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent-primary transition-colors"
+          />
+          <input
+            type="text"
+            placeholder="Search summaries..."
             className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3.5 pl-11 pr-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <button 
-          className="btn-primary py-3.5 px-6 shadow-xl shadow-accent-primary/10 whitespace-nowrap" 
+        <button
+          className="btn-primary py-3.5 px-6 shadow-xl shadow-accent-primary/10 whitespace-nowrap flex-1 sm:flex-none"
           onClick={() => setIsModalOpen(true)}
         >
           <Plus size={20} />
@@ -297,8 +324,8 @@ function SummarySection({ currentUser }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <AnimatePresence>
           {filteredSummaries.map((s) => (
-            <Motion.div 
-              key={s.id} 
+            <Motion.div
+              key={s.id}
               layout
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -306,29 +333,43 @@ function SummarySection({ currentUser }) {
               className="glass-card flex flex-col p-6 hover:translate-y-[-4px] active:scale-[0.98] group"
             >
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-bold text-text-primary leading-tight group-hover:text-accent-primary transition-colors">{s.title}</h3>
+                <h3 className="text-xl font-bold text-text-primary leading-tight group-hover:text-accent-primary transition-colors">
+                  {s.title}
+                </h3>
                 <div className="flex gap-1">
                   {s.user_email === currentUser.email && (
                     <>
-                      <button className="p-2 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all opacity-0 group-hover:opacity-100" onClick={() => handleEdit(s)}>
-                        <Edit3 size={16}/>
+                      <button
+                        className="p-2 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all opacity-0 group-hover:opacity-100"
+                        onClick={() => handleEdit(s)}
+                      >
+                        <Edit3 size={16} />
                       </button>
-                      <button className="p-2 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100" onClick={() => handleDelete(s)}>
-                        <Trash2 size={16}/>
+                      <button
+                        className="p-2 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
+                        onClick={() => handleDelete(s)}
+                      >
+                        <Trash2 size={16} />
                       </button>
                     </>
                   )}
                 </div>
               </div>
-              
+
               {s.image_url && (
                 <div className="mb-4 rounded-xl overflow-hidden bg-bg-secondary/30 relative">
-                  <img src={s.image_url} alt={s.title} className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <img
+                    src={s.image_url}
+                    alt={s.title}
+                    className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
                 </div>
               )}
-              
-              <p className="text-text-secondary text-sm leading-relaxed mb-6 line-clamp-3">{s.content}</p>
-              
+
+              <p className="text-text-secondary text-sm leading-relaxed mb-6 line-clamp-3">
+                {s.content}
+              </p>
+
               <div className="mt-auto pt-4 border-t border-border-primary/30 flex justify-between items-center">
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-muted">
                   <Calendar size={12} className="text-accent-primary/40" />
@@ -340,7 +381,7 @@ function SummarySection({ currentUser }) {
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={() => {
                   setSelectedSummaryForChat(s);
                   setIsChatModalOpen(true);
@@ -355,138 +396,185 @@ function SummarySection({ currentUser }) {
         </AnimatePresence>
       </div>
 
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6" onClick={resetForm}>
-            <Motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-bg-card border border-border-primary rounded-[32px] w-full max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl relative"
-              onClick={e => e.stopPropagation()}
+      {createPortal(
+        <AnimatePresence>
+          {isModalOpen && (
+            <Motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 sm:p-6"
+              onClick={resetForm}
             >
-              <div className="p-6 sm:p-8 flex flex-col gap-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-black text-text-primary tracking-tight">
-                    {editingId ? "Edit Summary" : "Create New Summary"}
-                  </h2>
-                  <button className="p-2 rounded-xl bg-bg-secondary text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all" onClick={resetForm}>
-                    <X size={24}/>
-                  </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-black uppercase tracking-widest text-text-muted ml-1">Summary Title</label>
-                    <input 
-                      type="text" 
-                      value={title} 
-                      onChange={e => setTitle(e.target.value)}
-                      placeholder="e.g., Mathematics Lecture Notes"
-                      className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3 px-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary transition-all"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-black uppercase tracking-widest text-text-muted ml-1">Date</label>
-                    <input 
-                      type="date" 
-                      value={date} 
-                      onChange={e => setDate(e.target.value)}
-                      className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3 px-4 text-text-primary focus:outline-none focus:border-accent-primary transition-all"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-2 relative">
-                    <div className="flex justify-between items-center ml-1">
-                      <label className="text-xs font-black uppercase tracking-widest text-text-muted">Content / Notes</label>
-                      <button 
-                        type="button"
-                        onClick={handleAISummarize}
-                        disabled={isSummarizing || !content.trim()}
-                        className="text-[10px] font-bold text-accent-primary flex items-center gap-1 hover:underline disabled:opacity-50"
+              <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <Motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  className="bg-bg-card border border-border-primary rounded-[32px] w-full max-w-xl shadow-2xl relative"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="p-6 sm:p-8 flex flex-col gap-6">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight">
+                        {editingId ? "Edit Summary" : "Create New Summary"}
+                      </h2>
+                      <button
+                        className="p-2 rounded-xl bg-bg-secondary text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                        onClick={resetForm}
                       >
-                        {isSummarizing ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                        {isSummarizing ? "Summarizing..." : "Summarize with AI"}
+                        <X size={24} />
                       </button>
                     </div>
-                    <textarea 
-                      value={content} 
-                      onChange={e => setContent(e.target.value)}
-                      placeholder="Briefly describe the summary..."
-                      className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl p-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary transition-all min-h-[120px] resize-none"
-                      required
-                    />
-                  </div>
 
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-black uppercase tracking-widest text-text-muted ml-1">Photo (Optional)</label>
-                    {imagePreview ? (
-                      <div className="relative w-full rounded-xl overflow-hidden border border-border-primary/50 group">
-                        <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                          <button 
-                            type="button"
-                            onClick={handleAIScan}
-                            disabled={isScanning}
-                            className="bg-accent-primary text-white px-4 py-2 rounded-full hover:bg-accent-primary/90 transition-all shadow-lg flex items-center gap-2 text-sm font-bold disabled:opacity-50"
-                          >
-                            {isScanning ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                            {isScanning ? "Scanning..." : "Scan with AI"}
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={removeImage}
-                            disabled={isScanning}
-                            className="bg-rose-500 text-white p-2 rounded-full hover:bg-rose-600 transition-colors shadow-lg disabled:opacity-50"
-                          >
-                            <Trash2 size={20} />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <label className="w-full bg-bg-secondary/50 border border-border-primary/50 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-accent-primary hover:bg-accent-primary/5 transition-all">
-                        <div className="p-3 bg-bg-primary rounded-full text-accent-primary/80 mb-2">
-                          <ImageIcon size={24} />
-                        </div>
-                        <span className="text-sm font-medium text-text-primary">Click to upload an image</span>
-                        <span className="text-xs text-text-muted">JPEG, PNG, JPG</span>
-                        <input 
-                          type="file" 
-                          accept="image/*"
-                          onChange={handleImageChange}
-                          className="hidden"
+                    <form
+                      onSubmit={handleSubmit}
+                      className="flex flex-col gap-5"
+                    >
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-black uppercase tracking-widest text-text-muted ml-1">
+                          Summary Title
+                        </label>
+                        <input
+                          type="text"
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          placeholder="e.g., Mathematics Lecture Notes"
+                          className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3 px-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary transition-all"
+                          required
                         />
-                      </label>
-                    )}
-                  </div>
-
-                  <button 
-                    type="submit" 
-                    className={`btn-primary w-full py-4 mt-2 ${loading ? 'opacity-80' : ''}`} 
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <div className="flex items-center gap-3">
-                        <Loader2 className="animate-spin" size={20} /> 
-                        <span>Saving...</span>
                       </div>
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        {editingId ? <Edit3 size={18} /> : <Plus size={18} />}
-                        {editingId ? "Update Summary" : "Create Summary"}
-                      </span>
-                    )}
-                  </button>
-                </form>
+
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-black uppercase tracking-widest text-text-muted ml-1">
+                          Date
+                        </label>
+                        <input
+                          type="date"
+                          value={date}
+                          onChange={(e) => setDate(e.target.value)}
+                          className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3 px-4 text-text-primary focus:outline-none focus:border-accent-primary transition-all"
+                          required
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2 relative">
+                        <div className="flex justify-between items-center ml-1">
+                          <label className="text-xs font-black uppercase tracking-widest text-text-muted">
+                            Content / Notes
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleAISummarize}
+                            disabled={isSummarizing || !content.trim()}
+                            className="text-[10px] font-bold text-accent-primary flex items-center gap-1 hover:underline disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {isSummarizing ? (
+                              <Loader2 size={10} className="animate-spin" />
+                            ) : (
+                              <Sparkles size={10} />
+                            )}
+                            {isSummarizing
+                              ? "Summarizing..."
+                              : "Summarize with AI"}
+                          </button>
+                        </div>
+                        <textarea
+                          value={content}
+                          onChange={(e) => setContent(e.target.value)}
+                          placeholder="Briefly describe the summary..."
+                          className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl p-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary transition-all min-h-[120px] resize-none"
+                          required
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-black uppercase tracking-widest text-text-muted ml-1">
+                          Photo (Optional)
+                        </label>
+                        {imagePreview ? (
+                          <div className="relative w-full rounded-xl overflow-hidden border border-border-primary/50 group">
+                            <img
+                              src={imagePreview}
+                              alt="Preview"
+                              className="w-full h-48 object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                              <button
+                                type="button"
+                                onClick={handleAIScan}
+                                disabled={isScanning}
+                                className="bg-accent-primary text-white px-4 py-2 rounded-full hover:bg-accent-primary/90 transition-all shadow-lg flex items-center gap-2 text-sm font-bold disabled:opacity-50"
+                              >
+                                {isScanning ? (
+                                  <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                  <Sparkles size={16} />
+                                )}
+                                {isScanning ? "Scanning..." : "Scan with AI"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={removeImage}
+                                disabled={isScanning}
+                                className="bg-rose-500 text-white p-2 rounded-full hover:bg-rose-600 transition-colors shadow-lg disabled:opacity-50"
+                              >
+                                <Trash2 size={20} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="w-full bg-bg-secondary/50 border border-border-primary/50 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-accent-primary hover:bg-accent-primary/5 transition-all">
+                            <div className="p-3 bg-bg-primary rounded-full text-accent-primary/80 mb-2">
+                              <ImageIcon size={24} />
+                            </div>
+                            <span className="text-sm font-medium text-text-primary">
+                              Click to upload an image
+                            </span>
+                            <span className="text-xs text-text-muted">
+                              JPEG, PNG, JPG
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageChange}
+                              className="hidden"
+                            />
+                          </label>
+                        )}
+                      </div>
+
+                      <button
+                        type="submit"
+                        className={`btn-primary w-full py-4 mt-2 ${loading ? "opacity-80" : ""}`}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <div className="flex items-center gap-3">
+                            <Loader2 className="animate-spin" size={20} />
+                            <span>Saving...</span>
+                          </div>
+                        ) : (
+                          <span className="flex items-center gap-2 whitespace-nowrap">
+                            {editingId ? (
+                              <Edit3 size={18} />
+                            ) : (
+                              <Plus size={18} />
+                            )}
+                            {editingId ? "Update Summary" : "Create Summary"}
+                          </span>
+                        )}
+                      </button>
+                    </form>
+                  </div>
+                </Motion.div>
               </div>
             </Motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      <SummaryChatModal 
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+      <SummaryChatModal
         isOpen={isChatModalOpen}
         onClose={() => setIsChatModalOpen(false)}
         summary={selectedSummaryForChat}
