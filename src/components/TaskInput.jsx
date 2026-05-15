@@ -13,6 +13,8 @@ import {
 import { supabase } from "../supabase";
 import { toast } from "sonner";
 import { useState } from "react";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Sparkles } from "lucide-react";
 
 function TaskInput({ addTask }) {
   const [text, setText] = useState("");
@@ -24,6 +26,70 @@ function TaskInput({ addTask }) {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [reminderOffset, setReminderOffset] = useState(0); // in minutes
+  const [isParsing, setIsParsing] = useState(false);
+
+  const handleAIScan = async () => {
+    if (!text.trim()) {
+      toast.error("Please type something first!");
+      return;
+    }
+
+    setIsParsing(true);
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("API Key Gemini tidak ditemukan di file .env");
+      }
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+
+      const now = new Date().toLocaleString("en-US", { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+      const prompt = `
+        Tolong analisis kalimat tugas ini: "${text}"
+        Waktu sekarang adalah: ${now}
+        
+        Ekstrak informasi berikut dalam format JSON murni:
+        {
+          "title": "Judul tugas yang ringkas",
+          "time": "YYYY-MM-DDTHH:mm",
+          "priority": "low" | "medium" | "high",
+          "detail": "tambahan catatan jika ada"
+        }
+
+        Ketentuan:
+        1. Jika tanggal tidak disebutkan, gunakan tanggal hari ini (${new Date().toISOString().split('T')[0]}).
+        2. Berikan hanya JSON, jangan ada teks penjelasan lain.
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const responseText = response.text();
+      
+      // Extract JSON more robustly
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("AI tidak memberikan respon dalam format yang benar.");
+      }
+
+      const data = JSON.parse(jsonMatch[0]);
+
+      if (data.title) setText(data.title);
+      if (data.time) setTime(data.time);
+      if (data.priority) setPriority(data.priority);
+      if (data.detail) {
+        setDetail(data.detail);
+        setShowDetail(true);
+      }
+
+      toast.success("AI has organized your task!");
+    } catch (error) {
+      console.error("AI Parse Error:", error);
+      toast.error(error.message || "Gagal memproses dengan AI.");
+    } finally {
+      setIsParsing(false);
+    }
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -99,8 +165,21 @@ function TaskInput({ addTask }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={loading}
-            className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3.5 pl-11 pr-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all shadow-inner disabled:opacity-50"
+            className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3.5 pl-11 pr-14 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all shadow-inner disabled:opacity-50"
           />
+          <button
+            type="button"
+            onClick={handleAIScan}
+            disabled={isParsing || loading}
+            title="Parse with Gemini AI"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-white transition-all disabled:opacity-50"
+          >
+            {isParsing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Sparkles size={16} />
+            )}
+          </button>
         </div>
 
         <div className="relative w-full sm:w-56 group">

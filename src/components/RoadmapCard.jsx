@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, Trash2, Check, X, Plus } from "lucide-react";
 import StepCard from "./StepItem";
+import StepModal from "./StepModal";
 
 export default function RoadmapCard({
   roadmap,
@@ -12,11 +13,14 @@ export default function RoadmapCard({
   onAddStep,
   onToggleStep,
   onDeleteStep,
+  onUpdateStep,
   onReorderStep,
 }) {
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState(roadmap.title);
   const [stepInput, setStepInput] = useState("");
+  const [selectedStep, setSelectedStep] = useState(null);
+  const [isStepModalOpen, setIsStepModalOpen] = useState(false);
 
   const {
     done,
@@ -153,6 +157,10 @@ export default function RoadmapCard({
                     total={roadmap.steps.length}
                     onToggle={() => onToggleStep(roadmap.id, step.id)}
                     onDelete={() => onDeleteStep(roadmap.id, step.id)}
+                    onStepClick={() => {
+                      setSelectedStep(step);
+                      setIsStepModalOpen(true);
+                    }}
                     onMoveLeft={
                       idx > 0
                         ? () => onReorderStep(roadmap.id, idx, idx - 1)
@@ -170,6 +178,15 @@ export default function RoadmapCard({
           </div>
         )}
       </div>
+
+      <StepModal
+        isOpen={isStepModalOpen}
+        onClose={() => setIsStepModalOpen(false)}
+        step={selectedStep || {}}
+        roadmapTitle={roadmap.title}
+        onToggle={() => onToggleStep(roadmap.id, selectedStep.id)}
+        onUpdateDetail={(newDetail) => onUpdateStep(roadmap.id, selectedStep.id, { detail: newDetail })}
+      />
 
       {/* Add step form */}
       <form className="add-step-form" onSubmit={handleAddStep}>

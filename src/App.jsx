@@ -315,7 +315,7 @@ function App() {
   }, [user, tasks]);
 
   // Roadmap Actions
-  const addRoadmap = async (title) => {
+  const addRoadmap = async (title, steps = []) => {
     if (!user) return;
     try {
       const { error } = await supabase
@@ -323,7 +323,7 @@ function App() {
         .insert([{ 
           title, 
           user_id: user.id, 
-          steps: [],
+          steps: steps,
           created_at: new Date().toISOString() 
         }]);
       if (error) throw error;
@@ -430,6 +430,28 @@ function App() {
     }
   };
 
+  const updateStep = async (roadmapId, stepId, updates) => {
+    if (!user) return;
+    const roadmap = roadmaps.find(r => r.id === roadmapId);
+    if (!roadmap) return;
+
+    const updatedSteps = roadmap.steps.map(s => 
+      s.id === stepId ? { ...s, ...updates } : s
+    );
+
+    try {
+      const { error } = await supabase
+        .from('roadmaps')
+        .update({ steps: updatedSteps })
+        .eq('id', roadmapId);
+      if (error) throw error;
+      toast.success("Step updated!");
+    } catch (error) {
+      console.error("Error updating step:", error);
+      toast.error("Failed to update step.");
+    }
+  };
+
   const deleteStep = async (roadmapId, stepId) => {
     if (!user) return;
     const roadmap = roadmaps.find(r => r.id === roadmapId);
@@ -443,8 +465,10 @@ function App() {
         .update({ steps: updatedSteps })
         .eq('id', roadmapId);
       if (error) throw error;
+      toast.success("Step deleted.");
     } catch (error) {
       console.error("Error deleting step:", error);
+      toast.error("Failed to delete step.");
     }
   };
 
@@ -543,156 +567,199 @@ function App() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col gap-6 sm:gap-8 min-h-screen">
-      <header className="glass-card flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 sm:p-6 gap-4">
-        <div className="flex items-center gap-4">
-          <div className="bg-accent-primary p-3 rounded-xl shadow-lg shadow-accent-primary/20 shrink-0">
+    <div className="app-container">
+      {/* Sidebar (Desktop) */}
+      <aside className="sidebar">
+        <div className="flex items-center gap-4 mb-10 px-2">
+          <div className="bg-accent-primary p-3 rounded-xl shadow-lg shadow-accent-primary/20">
             <ListTodo size={24} className="text-bg-primary" />
           </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-accent-primary m-0 mb-0">
-                Remindly
-              </h1>
-              <span className="hidden xs:flex items-center gap-1.5 bg-accent-primary/10 text-accent-primary text-[10px] sm:text-xs px-2.5 py-1 rounded-full font-bold border border-accent-primary/20 uppercase tracking-wider">
-                <Globe size={12}/> Sea Space
-              </span>
+          <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-accent-primary">
+            Remindly
+          </h1>
+        </div>
+
+        <nav className="flex flex-col gap-3">
+          <button 
+            onClick={() => setActiveTab("tasks")}
+            className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${
+              activeTab === "tasks" ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10" : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
+            }`}
+          >
+            <CheckCircle2 size={20} />
+            <span>Tasks</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab("summaries")}
+            className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${
+              activeTab === "summaries" ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10" : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
+            }`}
+          >
+            <FileText size={20} />
+            <span>Summaries</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab("roadmap")}
+            className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${
+              activeTab === "roadmap" ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10" : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
+            }`}
+          >
+            <Globe size={20} />
+            <span>Roadmap</span>
+          </button>
+        </nav>
+
+        <div className="mt-auto flex flex-col gap-4 border-t border-border-primary/50 pt-6">
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-10 h-10 rounded-full bg-bg-card border border-border-primary flex items-center justify-center text-accent-primary font-black">
+              {user.email[0].toUpperCase()}
             </div>
-            <span className="text-text-muted text-xs sm:text-sm font-medium">{user.email}</span>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-bold text-text-primary truncate">{user.user_metadata?.full_name || user.email.split('@')[0]}</span>
+              <span className="text-[10px] text-text-muted truncate">{user.email}</span>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-3 w-full sm:w-auto justify-end">
-          <button
-            className="icon-btn bg-bg-secondary/50 hover:bg-bg-secondary border border-border-primary/50"
-            onClick={() => setIsStatsOpen(true)}
-            title="Statistics"
-          >
-            <BarChart3 size={20} />
-          </button>
-          <button
-            className="icon-btn bg-bg-secondary/50 hover:bg-red-500/10 hover:text-red-400 border border-border-primary/50"
+          <button 
             onClick={logout}
-            title="Logout"
+            className="flex items-center gap-3 px-5 py-3 text-text-muted hover:text-rose-400 transition-colors font-bold text-sm"
           >
-            <LogOut size={20} />
+            <LogOut size={18} />
+            <span>Sign Out</span>
           </button>
         </div>
-      </header>
+      </aside>
 
-      <nav className="flex bg-bg-secondary/50 p-1.5 rounded-2xl border border-border-primary/30 gap-2">
-        <button 
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold transition-all duration-300 ${
-            activeTab === "tasks" 
-            ? "bg-bg-card text-accent-primary shadow-lg border border-border-primary" 
-            : "text-text-secondary hover:text-text-primary hover:bg-bg-secondary"
-          }`}
-          onClick={() => setActiveTab("tasks")}
-        >
-          <CheckCircle2 size={18} />
-          <span className="text-sm sm:text-base">Tasks</span>
-        </button>
-        <button 
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold transition-all duration-300 ${
-            activeTab === "summaries" 
-            ? "bg-bg-card text-accent-primary shadow-lg border border-border-primary" 
-            : "text-text-secondary hover:text-text-primary hover:bg-bg-secondary"
-          }`}
-          onClick={() => setActiveTab("summaries")}
-        >
-          <FileText size={18} />
-          <span className="text-sm sm:text-base">Summaries</span>
-        </button>
-        <button 
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold transition-all duration-300 ${
-            activeTab === "roadmap" 
-            ? "bg-bg-card text-accent-primary shadow-lg border border-border-primary" 
-            : "text-text-secondary hover:text-text-primary hover:bg-bg-secondary"
-          }`}
-          onClick={() => setActiveTab("roadmap")}
-        >
-          <Globe size={18} />
-          <span className="text-sm sm:text-base">Roadmap</span>
-        </button>
-      </nav>
-
-      {activeTab === "tasks" ? (
-        <div className="flex flex-col gap-6 sm:gap-8 fadeIn">
-          <ProgressBar tasks={tasks} />
-
-          <div className="glass-card overflow-hidden">
-            <TaskInput addTask={addTask} />
+      {/* Main Content Area */}
+      <main className="main-content">
+        {/* Top Header (Search & Stats) */}
+        <header className="h-20 border-b border-border-primary/30 flex items-center justify-between px-6 sm:px-10 bg-bg-primary/50 backdrop-blur-md z-40">
+          <div className="lg:hidden flex items-center gap-3">
+             <ListTodo size={24} className="text-accent-primary" />
+             <span className="font-black text-lg tracking-tight">Remindly</span>
           </div>
-
-          <FilterControls
-            filter={filter}
-            setFilter={setFilter}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-          />
-
-          <div className="flex justify-between items-center px-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">Community Tasks</h2>
-            <button 
-              className="icon-btn text-text-muted hover:text-red-400 hover:bg-red-500/10" 
-              onClick={clearAll} 
-              title="Clear All"
+          <div className="hidden lg:block">
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-text-muted">
+              {activeTab === "tasks" ? "Managing Tasks" : activeTab === "summaries" ? "Knowledge Hub" : "Strategic Roadmap"}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              className="p-3 rounded-xl bg-bg-secondary/50 text-text-secondary hover:text-accent-primary transition-all border border-border-primary/30"
+              onClick={() => setIsStatsOpen(true)}
             >
-              <Trash2 size={20} />
+              <BarChart3 size={20} />
+            </button>
+            <button className="lg:hidden p-3 rounded-xl bg-bg-secondary/50 text-text-secondary hover:text-rose-400 border border-border-primary/30" onClick={logout}>
+              <LogOut size={20} />
             </button>
           </div>
+        </header>
 
-          <TaskList
-            tasks={tasks}
-            deleteTask={deleteTask}
-            toggleDone={toggleDone}
-            updateTask={updateTask}
-            filter={filter}
-            sortBy={sortBy}
-            searchQuery={searchQuery}
-            currentUser={user}
-            onTaskClick={(task) => setSelectedTaskId(task.id)}
-          />
-        </div>
-      ) : activeTab === "summaries" ? (
-        <div className="fadeIn">
-          <SummarySection currentUser={user} />
-        </div>
-      ) : (
-        <div className="roadmap-container fadeIn">
-          <AddRoadmap onAdd={addRoadmap} />
-          
-          <div className="flex flex-col gap-6">
-            {roadmaps.length === 0 ? (
-              <div className="glass-card p-12 text-center flex flex-col items-center gap-4">
-                <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center text-text-muted">
-                  <Globe size={32} />
+        {/* Scrollable Content */}
+        <div className="scroll-area no-scrollbar">
+          <div className="max-w-5xl mx-auto w-full">
+            {activeTab === "tasks" ? (
+              <div className="flex flex-col gap-6 sm:gap-10 fadeIn">
+                <ProgressBar tasks={tasks} />
+                <div className="glass-card overflow-hidden">
+                  <TaskInput addTask={addTask} />
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold">No roadmaps yet</h3>
-                  <p className="text-text-secondary">Create your first roadmap to start tracking long-term goals.</p>
+                <FilterControls
+                  filter={filter}
+                  setFilter={setFilter}
+                  sortBy={sortBy}
+                  setSortBy={setSortBy}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                />
+                <div className="flex justify-between items-center px-2">
+                  <h2 className="text-2xl font-black text-text-primary tracking-tight">Tasks</h2>
+                  <button className="icon-btn text-text-muted hover:text-red-400" onClick={clearAll}>
+                    <Trash2 size={20} />
+                  </button>
                 </div>
+                <TaskList
+                  tasks={tasks}
+                  deleteTask={deleteTask}
+                  toggleDone={toggleDone}
+                  updateTask={updateTask}
+                  filter={filter}
+                  sortBy={sortBy}
+                  searchQuery={searchQuery}
+                  currentUser={user}
+                  onTaskClick={(task) => setSelectedTaskId(task.id)}
+                />
+              </div>
+            ) : activeTab === "summaries" ? (
+              <div className="fadeIn">
+                <SummarySection currentUser={user} />
               </div>
             ) : (
-              roadmaps.map((roadmap, idx) => (
-                <RoadmapCard
-                  key={roadmap.id}
-                  roadmap={roadmap}
-                  index={idx}
-                  total={roadmaps.length}
-                  onDeleteRoadmap={deleteRoadmap}
-                  onEditRoadmap={editRoadmap}
-                  onAddStep={addStep}
-                  onToggleStep={toggleStep}
-                  onDeleteStep={deleteStep}
-                  onReorderStep={reorderStep}
-                />
-              ))
+              <div className="roadmap-container fadeIn">
+                <div className="roadmap-header-content">
+                  <div>
+                    <h2 className="text-3xl font-black text-text-primary tracking-tight">Goal Roadmap</h2>
+                    <p className="text-text-secondary text-sm">Plan your long-term success with AI steps.</p>
+                  </div>
+                  <AddRoadmap onAdd={addRoadmap} />
+                </div>
+                
+                <div className="flex flex-col gap-8">
+                  {roadmaps.length === 0 ? (
+                    <div className="glass-card p-16 text-center flex flex-col items-center gap-4">
+                      <div className="w-20 h-20 bg-bg-secondary rounded-full flex items-center justify-center text-text-muted">
+                        <Globe size={40} />
+                      </div>
+                      <h3 className="text-xl font-bold">No roadmaps yet</h3>
+                    </div>
+                  ) : (
+                    roadmaps.map((roadmap, idx) => (
+                      <RoadmapCard
+                        key={roadmap.id}
+                        roadmap={roadmap}
+                        index={idx}
+                        total={roadmaps.length}
+                        onDeleteRoadmap={deleteRoadmap}
+                        onEditRoadmap={editRoadmap}
+                        onAddStep={addStep}
+                        onToggleStep={toggleStep}
+                        onDeleteStep={deleteStep}
+                        onUpdateStep={updateStep}
+                        onReorderStep={reorderStep}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
-      )}
+
+        {/* Mobile Navigation */}
+        <nav className="mobile-nav">
+          <button 
+            onClick={() => setActiveTab("tasks")}
+            className={`nav-item-mobile ${activeTab === "tasks" ? "active" : ""}`}
+          >
+            <CheckCircle2 size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Tasks</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab("summaries")}
+            className={`nav-item-mobile ${activeTab === "summaries" ? "active" : ""}`}
+          >
+            <FileText size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Knowledge</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab("roadmap")}
+            className={`nav-item-mobile ${activeTab === "roadmap" ? "active" : ""}`}
+          >
+            <Globe size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Roadmap</span>
+          </button>
+        </nav>
+      </main>
 
       <StatsDrawer
         isOpen={isStatsOpen}
@@ -711,20 +778,6 @@ function App() {
           currentUser={user}
         />
       )}
-
-      {/* Hidden Detail component for administrative actions if needed, or we can just remove it */}
-      {/* {selectedTaskId && (
-        <Detail
-          task={tasks.find((t) => t.id === selectedTaskId)}
-          onClose={() => setSelectedTaskId(null)}
-          onDelete={() => {
-            deleteTask(selectedTaskId);
-            setSelectedTaskId(null);
-          }}
-          updateTask={updateTask}
-          currentUser={user}
-        />
-      )} */}
     </div>
   );
 }

@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { 
   FileText, Plus, Trash2, Edit3, Calendar, 
   X, Loader2, User as UserIcon, Search, Image as ImageIcon,
-  Sparkles, Brain
+  Sparkles, Brain, MessageSquare
 } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabase";
 import { toast } from "sonner";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import SummaryChatModal from "./SummaryChatModal";
 
 function SummarySection({ currentUser }) {
   const [summaries, setSummaries] = useState([]);
@@ -24,6 +25,9 @@ function SummarySection({ currentUser }) {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [isScanning, setIsScanning] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [selectedSummaryForChat, setSelectedSummaryForChat] = useState(null);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchSummaries = async () => {
@@ -174,7 +178,7 @@ function SummarySection({ currentUser }) {
     setIsScanning(true);
     try {
       const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
       // Convert image to base64
       const fileData = await new Promise((resolve) => {
@@ -211,6 +215,35 @@ function SummarySection({ currentUser }) {
       toast.error("Gagal memindai dengan AI. Pastikan API Key valid.");
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  const handleAISummarize = async () => {
+    if (!content.trim()) {
+      toast.error("Tulis atau tempel teks yang ingin diringkas dahulu.");
+      return;
+    }
+
+    setIsSummarizing(true);
+    try {
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+
+      const prompt = `
+        Tolong ringkas teks berikut menjadi poin-poin penting yang mudah dipahami dalam bahasa Indonesia.
+        Gunakan format bullet points (•).
+        Teks: "${content}"
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      setContent(response.text());
+      toast.success("Teks berhasil diringkas!");
+    } catch (error) {
+      console.error("AI Summarize Error:", error);
+      toast.error("Gagal meringkas teks.");
+    } finally {
+      setIsSummarizing(false);
     }
   };
 
@@ -306,6 +339,17 @@ function SummarySection({ currentUser }) {
                   <span>{s.user_name}</span>
                 </div>
               </div>
+
+              <button 
+                onClick={() => {
+                  setSelectedSummaryForChat(s);
+                  setIsChatModalOpen(true);
+                }}
+                className="mt-4 w-full py-2.5 bg-accent-primary/10 text-accent-primary border border-accent-primary/20 rounded-xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-accent-primary hover:text-white transition-all shadow-sm group-hover:shadow-accent-primary/20"
+              >
+                <MessageSquare size={14} />
+                <span>Tanya AI tentang Catatan Ini</span>
+              </button>
             </Motion.div>
           ))}
         </AnimatePresence>
@@ -355,8 +399,19 @@ function SummarySection({ currentUser }) {
                     />
                   </div>
 
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-black uppercase tracking-widest text-text-muted ml-1">Content / Notes</label>
+                  <div className="flex flex-col gap-2 relative">
+                    <div className="flex justify-between items-center ml-1">
+                      <label className="text-xs font-black uppercase tracking-widest text-text-muted">Content / Notes</label>
+                      <button 
+                        type="button"
+                        onClick={handleAISummarize}
+                        disabled={isSummarizing || !content.trim()}
+                        className="text-[10px] font-bold text-accent-primary flex items-center gap-1 hover:underline disabled:opacity-50"
+                      >
+                        {isSummarizing ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                        {isSummarizing ? "Summarizing..." : "Summarize with AI"}
+                      </button>
+                    </div>
                     <textarea 
                       value={content} 
                       onChange={e => setContent(e.target.value)}
@@ -431,6 +486,11 @@ function SummarySection({ currentUser }) {
           </div>
         )}
       </AnimatePresence>
+      <SummaryChatModal 
+        isOpen={isChatModalOpen}
+        onClose={() => setIsChatModalOpen(false)}
+        summary={selectedSummaryForChat}
+      />
     </div>
   );
 }

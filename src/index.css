@@ -265,17 +265,13 @@
   pointer-events: none;
 }
 
-.task-grid {
-  @apply grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 p-4 sm:p-6;
-}
-
-/* Roadmap Styles */
+/* --- Roadmap & Component Styles --- */
 .roadmap-container {
   @apply flex flex-col gap-8;
 }
 
 .add-roadmap-container {
-  @apply glass-card p-6 flex flex-col gap-4;
+  @apply glass-card p-4 sm:p-6 flex flex-col gap-4;
 }
 
 .section-label {
@@ -283,61 +279,55 @@
 }
 
 .add-form {
-  @apply flex gap-3;
+  @apply flex flex-col sm:flex-row gap-3;
 }
 
 .main-input {
   @apply flex-1 bg-bg-secondary/50 border border-border-primary/50 rounded-xl px-4 py-3 
          text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary/50
-         transition-all duration-200;
+         transition-all duration-200 w-full;
 }
 
 .add-btn {
-  @apply btn-primary px-5 whitespace-nowrap;
+  @apply btn-primary px-5 py-3 whitespace-nowrap w-full sm:w-auto;
+}
+
+.ai-btn {
+  @apply bg-accent-primary/10 text-accent-primary border border-accent-primary/20 px-5 py-3 
+         rounded-xl flex items-center justify-center gap-2 font-bold hover:bg-accent-primary 
+         hover:text-bg-primary transition-all disabled:opacity-50 w-full sm:w-auto;
 }
 
 .roadmap-card {
-  @apply glass-card p-6 flex flex-col gap-6;
+  @apply glass-card p-5 sm:p-7 flex flex-col gap-6 relative overflow-hidden;
 }
 
 .card-header {
-  @apply flex justify-between items-start;
+  @apply flex justify-between items-start gap-4;
 }
 
 .card-title-area {
-  @apply flex flex-col gap-1;
+  @apply flex flex-col gap-1 overflow-hidden;
 }
 
 .card-number {
-  @apply text-[10px] font-bold text-accent-primary/60 uppercase tracking-tighter;
+  @apply text-[10px] font-black text-accent-primary/60 uppercase tracking-widest;
 }
 
 .card-header h3 {
-  @apply text-xl font-bold text-text-primary;
+  @apply text-xl sm:text-2xl font-black text-text-primary truncate;
 }
 
 .card-actions {
-  @apply flex gap-2;
-}
-
-.btn-icon {
-  @apply icon-btn;
-}
-
-.btn-danger {
-  @apply hover:text-red-400 hover:bg-red-400/10;
-}
-
-.btn-success {
-  @apply hover:text-accent-primary hover:bg-accent-primary/10;
+  @apply flex gap-1 sm:gap-2 shrink-0;
 }
 
 .progress-container {
-  @apply flex flex-col gap-2;
+  @apply flex flex-col gap-2 bg-bg-secondary/30 p-4 rounded-2xl border border-border-primary/20;
 }
 
 .progress-info {
-  @apply flex justify-between text-xs font-medium text-text-secondary;
+  @apply flex justify-between text-[11px] font-bold text-text-secondary uppercase tracking-wider;
 }
 
 .progress-percent {
@@ -345,27 +335,61 @@
 }
 
 .pb-bg {
-  @apply h-1.5 bg-bg-secondary/50 rounded-full overflow-hidden border border-border-primary/30;
+  @apply h-2 bg-bg-primary rounded-full overflow-hidden border border-border-primary/30;
 }
 
 .pb-fill {
   @apply h-full bg-gradient-to-r from-accent-primary to-accent-secondary;
 }
 
+/* Roadmap Flow */
 .roadmap-flow-container {
-  @apply min-h-[100px] flex items-center;
+  @apply min-h-[120px] flex items-center py-2;
 }
 
 .roadmap-flow {
-  @apply flex gap-4 overflow-x-auto pb-4 custom-scrollbar;
-}
-
-.empty-steps {
-  @apply text-sm text-text-muted italic;
+  @apply flex gap-4 overflow-x-auto pb-6 -mx-5 px-5 sm:mx-0 sm:px-0 custom-scrollbar;
+  scroll-snap-type: x mandatory;
 }
 
 .step-item-wrapper {
   @apply flex items-center gap-4 flex-shrink-0;
+  scroll-snap-align: center;
+}
+
+.flow-connector {
+  @apply w-8 h-0.5 bg-border-primary/50 transition-colors duration-500 shrink-0;
+}
+
+.flow-connector.active {
+  @apply bg-accent-primary shadow-[0_0_10px_rgba(100,255,218,0.5)];
+}
+
+/* Add Step Form */
+.add-step-form {
+  @apply flex gap-3 pt-4 border-t border-border-primary/30;
+}
+
+.step-input {
+  @apply flex-1 bg-bg-secondary/40 border border-border-primary/30 rounded-xl px-4 py-2.5 
+         text-sm text-text-primary placeholder:text-text-muted focus:outline-none 
+         focus:border-accent-primary/50 transition-all;
+}
+
+.btn-icon {
+  @apply p-2 rounded-xl transition-all duration-200 text-text-secondary hover:text-accent-primary hover:bg-bg-card-hover border border-transparent;
+}
+
+.btn-danger {
+  @apply hover:text-rose-400 hover:bg-rose-400/10 hover:border-rose-400/20;
+}
+
+.btn-success {
+  @apply hover:text-accent-primary hover:bg-accent-primary/10 hover:border-accent-primary/20;
+}
+
+.empty-steps {
+  @apply text-sm text-text-muted italic;
 }
 
 .flow-connector {
@@ -433,8 +457,126 @@
   @apply flex items-center gap-2;
 }
 
-@media (max-width: 480px) {
+/* --- Responsive Upgrades --- */
+
+/* Base Layout Changes */
+.app-container {
+  @apply flex min-h-screen bg-bg-primary overflow-hidden;
+}
+
+.main-content {
+  @apply flex-1 flex flex-col h-screen overflow-hidden relative;
+}
+
+.scroll-area {
+  @apply flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 lg:p-10 pb-24 sm:pb-10;
+}
+
+/* Sidebar Responsive Logic */
+.sidebar {
+  @apply hidden lg:flex flex-col w-72 bg-bg-secondary border-r border-border-primary/50 p-6 z-[50];
+}
+
+/* Mobile Bottom Nav */
+.mobile-nav {
+  @apply lg:hidden fixed bottom-0 left-0 right-0 bg-bg-secondary/80 backdrop-blur-xl 
+         border-t border-border-primary/50 px-6 py-3 flex justify-around items-center z-[100];
+}
+
+.nav-item-mobile {
+  @apply flex flex-col items-center gap-1 text-text-muted transition-all duration-300;
+}
+
+.nav-item-mobile.active {
+  @apply text-accent-primary scale-110;
+}
+
+/* Enhanced Grid Systems */
+.task-grid {
+  @apply grid gap-4 sm:gap-6;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+@media (max-width: 640px) {
   .task-grid {
-    @apply grid-cols-1 gap-4 p-4;
+    @apply grid-cols-1;
+  }
+}
+
+.summary-grid {
+  @apply grid gap-6;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+@media (max-width: 768px) {
+  .summary-grid {
+    @apply grid-cols-1;
+  }
+}
+
+/* Roadmap Flow Responsive */
+.roadmap-flow {
+  @apply flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 sm:mx-0 sm:px-0 custom-scrollbar;
+  scroll-snap-type: x mandatory;
+}
+
+.step-item-wrapper {
+  @apply flex items-center gap-4 flex-shrink-0;
+  scroll-snap-align: start;
+}
+
+/* Mobile Modal Enhancements (Bottom Sheet Style) */
+@media (max-width: 640px) {
+  .modal-container {
+    @apply items-end p-0 !important;
+  }
+  
+  .modal-content {
+    @apply rounded-t-[32px] rounded-b-none w-full max-h-[92vh] !important;
+    animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Touch Optimizations */
+@media (pointer: coarse) {
+  .btn-primary, .icon-btn, .nav-item-mobile {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  input, textarea, select {
+    @apply text-base !important; /* Prevent iOS zoom */
+  }
+}
+
+/* Roadmap Header Responsive */
+.roadmap-header-content {
+  @apply flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8;
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-border-primary/50 rounded-full;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-text-muted/50;
   }
 }

@@ -14,6 +14,7 @@ export default function StepCard({
   total,
   onToggle,
   onDelete,
+  onStepClick,
   onMoveLeft,
   onMoveRight,
 }) {
@@ -25,12 +26,12 @@ export default function StepCard({
       exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.18 } }}
       transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
       className={`step-card${step.done ? " done" : ""}`}
-      onClick={onToggle}
+      onClick={onStepClick}
       role="button"
       tabIndex={0}
-      aria-label={`${step.text} — ${step.done ? "completed" : "pending"}. Click to toggle.`}
+      aria-label={`${step.text} — ${step.done ? "completed" : "pending"}. Click to view details.`}
       onKeyDown={(e) =>
-        e.key === "Enter" || e.key === " " ? onToggle() : null
+        e.key === "Enter" || e.key === " " ? onStepClick() : null
       }
     >
       <div className="step-number">Step {index + 1}</div>

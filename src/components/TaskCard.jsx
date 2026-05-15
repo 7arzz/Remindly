@@ -1,5 +1,5 @@
 import { motion as Motion } from "framer-motion";
-import { Trash2, CheckCircle, Circle, Clock, MessageSquare } from "lucide-react";
+import { Trash2, CheckCircle, Circle, Clock, MessageSquare, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick }) {
@@ -72,24 +72,39 @@ function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick }) {
           </span>
         </div>
         
-        {isOwner && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toast("Delete Task?", {
-                description: "Are you sure you want to delete this task?",
-                action: {
-                  label: "Delete",
-                  onClick: () => deleteTask(task.id)
-                },
-                cancel: { label: "Cancel" }
-              });
-            }}
-            className="p-1.5 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
-          >
-            <Trash2 size={14} />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {isOwner && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClick(); // Trigger edit modal
+                }}
+                className="p-1.5 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                title="Edit Task"
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toast("Delete Task?", {
+                    description: "Are you sure you want to delete this task?",
+                    action: {
+                      label: "Delete",
+                      onClick: () => deleteTask(task.id)
+                    },
+                    cancel: { label: "Cancel" }
+                  });
+                }}
+                className="p-1.5 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                title="Delete Task"
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {isExpired && !task.done && (
