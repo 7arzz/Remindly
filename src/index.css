@@ -530,7 +530,7 @@
   .modal-container {
     @apply items-end p-0 !important;
   }
-  
+
   .modal-content {
     @apply rounded-t-[32px] rounded-b-none w-full max-h-[92vh] !important;
     animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
@@ -538,17 +538,25 @@
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 /* Touch Optimizations */
 @media (pointer: coarse) {
-  .btn-primary, .icon-btn, .nav-item-mobile {
+  .btn-primary,
+  .icon-btn,
+  .nav-item-mobile {
     @apply min-h-[44px] min-w-[44px];
   }
-  
-  input, textarea, select {
+
+  input,
+  textarea,
+  select {
     @apply text-base !important; /* Prevent iOS zoom */
   }
 }

@@ -3,6 +3,7 @@ import {
   BarChart3, Trash2, ListTodo, LogIn, LogOut, 
   User as UserIcon, Globe, FileText, CheckCircle2 
 } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import FilterControls from "./components/FilterControls";
 import ProgressBar from "./components/ProgressBar";
@@ -768,16 +769,18 @@ function App() {
         history={[]}
       />
 
-      {selectedTaskId && (
-        <TaskModal
-          task={tasks.find((t) => t.id === selectedTaskId)}
-          isOpen={!!selectedTaskId}
-          onClose={() => setSelectedTaskId(null)}
-          onDelete={deleteTask}
-          toggleDone={toggleDone}
-          currentUser={user}
-        />
-      )}
+      <AnimatePresence>
+        {selectedTaskId && (
+          <TaskModal
+            task={tasks.find((t) => String(t.id) === String(selectedTaskId))}
+            isOpen={true}
+            onClose={() => setSelectedTaskId(null)}
+            onDelete={deleteTask}
+            toggleDone={toggleDone}
+            currentUser={user}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
