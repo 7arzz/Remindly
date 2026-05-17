@@ -608,6 +608,45 @@ function App() {
             <LogIn size={20} />
             Sign in with Google
           </button>
+          
+          <button
+            onClick={async () => {
+              console.log("[Test] Test Notification button clicked (unauthenticated)");
+              console.log("[Test] Notification.permission:", Notification.permission);
+              console.log("[Test] serviceWorker in navigator:", "serviceWorker" in navigator);
+              
+              if ("serviceWorker" in navigator) {
+                const reg = await navigator.serviceWorker.getRegistration();
+                console.log("[Test] serviceWorker registration:", reg);
+                if (reg) {
+                  console.log("[Test] active SW state:", reg?.active?.state);
+                } else {
+                  console.log("[Test] No SW registered yet, registering now...");
+                  try {
+                    const { registerServiceWorker } = await import("./lib/firebase.js");
+                    const newReg = await registerServiceWorker();
+                    console.log("[Test] Newly registered SW:", newReg);
+                  } catch (err) {
+                    console.error("[Test] SW register failed:", err);
+                  }
+                }
+              }
+              
+              const { checkBrowserSupport } = await import("./lib/firebase.js");
+              console.log("[Test] browser support:", checkBrowserSupport());
+              
+              if (Notification.permission === "default") {
+                console.log("[Test] Requesting permission...");
+                await Notification.requestPermission();
+              }
+              
+              const { sendLocalNotification } = await import("./lib/firebase.js");
+              sendLocalNotification("Test Notification", "This is a test notification from the login button click.");
+            }}
+            className="text-xs text-text-muted hover:text-accent-primary transition-colors underline cursor-pointer"
+          >
+            Test Notification (Unauthenticated)
+          </button>
         </div>
       </div>
     );
@@ -691,6 +730,28 @@ function App() {
             className="text-xs text-text-muted/50 hover:text-text-primary px-5 pb-2 text-left"
           >
             Debug FCM
+          </button>
+          <button
+            onClick={async () => {
+              console.log("[Test] Test Notification button clicked");
+              console.log("[Test] Notification.permission:", Notification.permission);
+              console.log("[Test] serviceWorker in navigator:", "serviceWorker" in navigator);
+              
+              if ("serviceWorker" in navigator) {
+                const reg = await navigator.serviceWorker.getRegistration();
+                console.log("[Test] serviceWorker registration:", reg);
+                console.log("[Test] active SW state:", reg?.active?.state);
+              }
+              
+              const { checkBrowserSupport } = await import("./lib/firebase.js");
+              console.log("[Test] browser support:", checkBrowserSupport());
+              
+              const { sendLocalNotification } = await import("./lib/firebase.js");
+              sendLocalNotification("Test Notification", "This is a test notification from the button click.");
+            }}
+            className="text-xs text-text-muted/50 hover:text-text-primary px-5 pb-4 text-left"
+          >
+            Test Notification
           </button>
         </div>
       </aside>

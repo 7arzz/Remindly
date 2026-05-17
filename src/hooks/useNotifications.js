@@ -132,12 +132,6 @@ export const useNotifications = (user, tasks = []) => {
           icon:        "🔔",
         });
         addDebug(`Foreground push received: ${title}`);
-
-        // Only fire native notification if the tab is hidden
-        // This avoids duplicate notification/bentrok with toast!
-        if (document.visibilityState === "hidden") {
-          sendLocalNotification(title, body);
-        }
       });
       addDebug("Foreground listener attached");
     };
@@ -183,16 +177,16 @@ export const useNotifications = (user, tasks = []) => {
             notifiedRef.current.add(key);
             const humanLabel = thresholdLabel(minutes);
 
-            if (document.visibilityState === "hidden") {
-              sendLocalNotification(
-                `⏰ Deadline in ${humanLabel}!`,
-                `"${task.text}" is due at ${new Date(task.time).toLocaleTimeString([], {
-                  hour:   "2-digit",
-                  minute: "2-digit",
-                })}`,
-                { tag: key }
-              );
-            }
+            // Force local notification for deadlines
+            console.log(`[Notifications] Triggering local deadline notification: ${task.text} (${humanLabel})`);
+            sendLocalNotification(
+              `⏰ Deadline in ${humanLabel}!`,
+              `"${task.text}" is due at ${new Date(task.time).toLocaleTimeString([], {
+                hour:   "2-digit",
+                minute: "2-digit",
+              })}`,
+              { tag: key }
+            );
 
             addDebug(`Local deadline triggered: ${task.text} (${humanLabel})`);
 

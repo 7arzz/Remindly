@@ -86,7 +86,16 @@ self.addEventListener("notificationclick", (event) => {
 });
 
 // ─── SW Lifecycle Hooks ───────────────────────────────────────────────────────
-self.addEventListener("install",  () => self.skipWaiting());
+self.addEventListener("install",  (event) => {
+  console.log("[SW] registered");
+  self.skipWaiting();
+});
+
 self.addEventListener("activate", (event) => {
-  event.waitUntil(clients.claim());
+  console.log("[SW] active");
+  event.waitUntil(
+    clients.claim().then(() => {
+      console.log("[SW] controlling page");
+    })
+  );
 });

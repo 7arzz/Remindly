@@ -79,19 +79,26 @@ export const checkBrowserSupport = () => {
  * Returns the SW registration, or null on failure.
  */
 export const registerServiceWorker = async () => {
-  if (!("serviceWorker" in navigator)) return null;
+  if (!("serviceWorker" in navigator)) {
+    console.warn("[FCM] serviceWorker not in navigator");
+    return null;
+  }
 
   try {
     // In production, Vite PWA generates 'sw.js' which imports our firebase script.
     // In development, Vite PWA is disabled, so we directly register the firebase script.
     const swUrl = import.meta.env.MODE === "production" ? "/sw.js" : "/firebase-messaging-sw.js";
     
+    console.log(`[FCM] Attempting to register Service Worker at: ${swUrl}`);
     const reg = await navigator.serviceWorker.register(swUrl, {
       scope: "/",
     });
     console.log(`[FCM] Service Worker registered (${swUrl}):`, reg.scope);
-    await navigator.serviceWorker.ready; // Ensure it's active
-    return reg;
+    
+    // Wait for it to become ready
+    const readyReg = await navigator.serviceWorker.ready;
+    console.log(`[FCM] Service Worker is ready!`, readyReg);
+    return readyReg;
   } catch (err) {
     console.error("[FCM] Service Worker registration failed:", err);
     return null;
@@ -105,15 +112,19 @@ export const registerServiceWorker = async () => {
  * Returns: { token, permission, error }
  */
 export const requestNotificationPermission = async () => {
+  console.log("[FCM] Requesting notification permission...");
   const result = {
     token: null,
     permission: Notification.permission,
     error: null,
   };
 
+  console.log(`[FCM] Current permission status: ${result.permission}`);
+
   // Step 1 — check browser support
   const { fcm } = checkBrowserSupport();
   if (!fcm) {
+    console.warn("[FCM] Browser does not support push notifications.");
     result.error = "Browser does not support push notifications.";
     return result;
   }
@@ -121,41 +132,53 @@ export const requestNotificationPermission = async () => {
   // Step 2 — request permission if not already granted/denied
   if (Notification.permission === "default") {
     try {
+      console.log("[FCM] Awaiting user permission choice...");
       result.permission = await Notification.requestPermission();
+      console.log(`[FCM] User permission choice: ${result.permission}`);
     } catch (err) {
+      console.error("[FCM] Failed to request notification permission:", err);
       result.error = "Failed to request notification permission.";
       return result;
     }
   }
 
   if (result.permission !== "granted") {
+    console.warn(`[FCM] Notification permission was not granted (status: ${result.permission})`);
     result.error = "Notification permission was denied.";
     return result;
   }
 
   // Step 3 — register SW & get FCM token
+  console.log("[FCM] Registering Service Worker for token retrieval...");
   const swReg = await registerServiceWorker();
   if (!swReg) {
+    console.error("[FCM] Failed to register service worker during token retrieval.");
     result.error = "Failed to register service worker.";
     return result;
   }
 
+  console.log("[FCM] Initializing Messaging instance...");
   const messaging = await getMessagingInstance();
   if (!messaging) {
+    console.error("[FCM] Firebase Messaging is not available.");
     result.error = "Firebase Messaging is not available.";
     return result;
   }
 
   try {
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+    console.log(`[FCM] Calling getToken with VAPID key: ${vapidKey ? "present" : "MISSING"}`);
+    
     const token = await getToken(messaging, {
-      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+      vapidKey: vapidKey,
       serviceWorkerRegistration: swReg,
     });
 
     if (token) {
-      console.log("[FCM] Token obtained:", token.slice(0, 20) + "…");
+      console.log("[FCM] Token obtained successfully:", token.slice(0, 20) + "…");
       result.token = token;
     } else {
+      console.error("[FCM] Could not obtain FCM token. Ensure VAPID key is correct.");
       result.error = "Could not obtain FCM token. Ensure VAPID key is correct.";
     }
   } catch (err) {
@@ -174,11 +197,25 @@ export const requestNotificationPermission = async () => {
  * @returns {() => void} Unsubscribe function — call on component unmount
  */
 export const onForegroundMessage = async (callback) => {
+  console.log("[FCM] Initializing foreground message listener...");
   const messaging = await getMessagingInstance();
-  if (!messaging) return () => {};
+  if (!messaging) {
+    console.warn("[FCM] Cannot attach foreground listener: messaging is null.");
+    return () => {};
+  }
 
+  console.log("[FCM] Foreground listener attached.");
   return onMessage(messaging, (payload) => {
     console.log("[FCM] Foreground message received:", payload);
+    
+    // STEP 6: If Firebase foreground payload arrives, show notification manually
+    // Since Firebase doesn't automatically show notification in foreground, we force it
+    const title = payload?.data?.title ?? payload?.notification?.title ?? "Remindly";
+    const body  = payload?.data?.body  ?? payload?.notification?.body  ?? "";
+    
+    console.log(`[FCM] Forcing local notification for foreground message: ${title}`);
+    sendLocalNotification(title, body, payload.data || {});
+    
     callback(payload);
   });
 };
@@ -186,21 +223,39 @@ export const onForegroundMessage = async (callback) => {
 // ─── Local / In-App Notification ─────────────────────────────────────────────
 
 /**
- * Sends a native browser Notification (works only while the tab is open).
+ * Sends a native browser Notification.
  * Falls back silently if permission hasn't been granted.
  */
-export const sendLocalNotification = (title, body, options = {}) => {
-  if (Notification.permission !== "granted") return;
+export const sendLocalNotification = async (title, body, options = {}) => {
+  if (Notification.permission !== "granted") {
+    console.log("[FCM] Permission not granted for local notification");
+    return;
+  }
+
+  const notificationOptions = {
+    body,
+    icon: options.icon || "/bell.png",
+    badge: options.badge || "/favicon.svg",
+    tag: options.tag || `remindly-${Date.now()}`,
+    ...options,
+  };
 
   try {
-    const n = new Notification(title, {
-      body,
-      icon: options.icon || "/bell.png",
-      badge: options.badge || "/favicon.svg",
-      tag: options.tag || `remindly-${Date.now()}`,
-      ...options,
-    });
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && reg.showNotification) {
+        console.log("[FCM] Showing local notification via Service Worker");
+        await reg.showNotification(title, notificationOptions);
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn("[FCM] SW showNotification failed, falling back to window.Notification:", err);
+  }
 
+  try {
+    console.log("[FCM] Showing local notification via window.Notification");
+    const n = new Notification(title, notificationOptions);
     // Auto-close after 8 seconds
     setTimeout(() => n.close(), 8000);
     return n;
