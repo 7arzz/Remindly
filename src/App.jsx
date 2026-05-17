@@ -30,6 +30,7 @@ import { useTutorial } from "./hooks/useTutorial";
 import { supabase, loginWithGoogle, logout } from "./supabase";
 import { toast } from "sonner";
 import { useNotifications } from "./hooks/useNotifications";
+import ThemeToggle from "./components/ThemeToggle";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -47,6 +48,7 @@ function App() {
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [showDebug, setShowDebug] = useState(false);
 
   // Spotlight Tutorial Configuration
@@ -155,7 +157,9 @@ function App() {
     tokenLoading,
     tokenError,
     support: notifSupport,
+    // eslint-disable-next-line no-unused-vars
     debugLog,
+    // eslint-disable-next-line no-unused-vars
     fcmToken,
     requestPermission: requestNotifPermission,
   } = useNotifications(user, tasks);
@@ -582,7 +586,10 @@ function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col justify-center items-center p-6 bg-gradient-sea">
+      <div className="min-h-screen flex flex-col justify-center items-center p-6 bg-gradient-sea relative">
+        <div className="absolute top-5 right-5 z-[100]">
+          <ThemeToggle />
+        </div>
         <header className="w-full max-w-md mb-8">
           <div className="flex flex-col items-center gap-4">
             <div className="bg-accent-primary p-4 rounded-2xl shadow-lg shadow-accent-primary/20">
@@ -779,6 +786,7 @@ function App() {
 
           {/* Desktop buttons (always visible on lg+) */}
           <div className="hidden lg:flex items-center gap-3">
+            <ThemeToggle />
             <button
               title="Mulai Ulang Tutorial"
               className="p-3 rounded-xl bg-bg-secondary/50 text-text-secondary hover:text-accent-primary transition-all border border-border-primary/30 flex items-center justify-center"
@@ -835,6 +843,10 @@ function App() {
                 </div>
 
                 {/* Menu items */}
+                <div className="mobile-menu-item flex justify-between items-center px-4 py-2 border-b border-border-primary/20">
+                  <span className="text-sm font-bold text-text-secondary">Switch Theme</span>
+                  <ThemeToggle />
+                </div>
                 <button
                   className="mobile-menu-item"
                   onClick={() => {
