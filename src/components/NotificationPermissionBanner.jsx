@@ -31,8 +31,31 @@ export default function NotificationPermissionBanner({
   // - browser doesn't support notifications at all
   // - already dismissed by user
   if (dismissed) return null;
-  if (!supported) return null;
   if (permission === "granted") return null;
+
+  // ─── Unsupported browser fallback ─────────────────────────────────────────
+  if (!supported) {
+    return (
+      <div className="notification-banner notification-banner--denied">
+        <div className="notification-banner__icon">
+          <BellOff size={18} />
+        </div>
+        <div className="notification-banner__body">
+          <strong>Push Not Supported</strong>
+          <p>
+            Your browser doesn't support push notifications. For the best experience on mobile, please use Chrome for Android.
+          </p>
+        </div>
+        <button
+          className="notification-banner__close"
+          onClick={() => setDismissed(true)}
+          aria-label="Dismiss"
+        >
+          <X size={16} />
+        </button>
+      </div>
+    );
+  }
 
   // ─── Denied state ─────────────────────────────────────────────────────────
   if (permission === "denied") {
@@ -68,6 +91,12 @@ export default function NotificationPermissionBanner({
       <div className="notification-banner__body">
         <strong>Stay on top of your deadlines</strong>
         <p>Enable push notifications to get reminders 2 hours, 30 minutes, and 5 minutes before each deadline.</p>
+        
+        {/* Battery optimization warning for Android/Mobile users */}
+        <p className="text-[11px] leading-tight text-text-muted mt-2 border-t border-border-primary/30 pt-2">
+          <strong>Android Users:</strong> Please disable "Battery Optimization" for your browser to ensure background reminders arrive on time.
+        </p>
+
         {tokenError && (
           <p className="notification-banner__error">{tokenError}</p>
         )}

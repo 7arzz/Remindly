@@ -182,6 +182,21 @@ export default function SpotlightTutorial({
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [isActive, currentStep, steps, computePosition]);
 
+  /* ── Step callbacks ── */
+  useEffect(() => {
+    if (!isActive) return;
+    const step = steps[currentStep];
+    if (step && typeof step.onEnter === "function") {
+      step.onEnter();
+    }
+    return () => {
+      if (step && typeof step.onLeave === "function") {
+        step.onLeave();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, currentStep]);
+
   /* ── Recompute on resize / scroll / visualViewport change ── */
   useEffect(() => {
     if (!isActive) return;

@@ -5,20 +5,26 @@
  */
 
 import { initializeApp, getApps } from "firebase/app";
-import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
+import {
+  getMessaging,
+  getToken,
+  onMessage,
+  isSupported,
+} from "firebase/messaging";
 
 // ─── Firebase Config ──────────────────────────────────────────────────────────
 const firebaseConfig = {
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // Singleton — avoid re-initialising on HMR
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const app =
+  getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
 // Lazy messaging instance (null if browser doesn't support it)
 let _messaging = null;
@@ -33,7 +39,9 @@ export const getMessagingInstance = async () => {
   try {
     const supported = await isSupported();
     if (!supported) {
-      console.warn("[FCM] Firebase Messaging is not supported in this browser.");
+      console.warn(
+        "[FCM] Firebase Messaging is not supported in this browser.",
+      );
       return null;
     }
     _messaging = getMessaging(app);
@@ -54,9 +62,12 @@ export const checkBrowserSupport = () => {
   const support = {
     notifications: "Notification" in window,
     serviceWorker: "serviceWorker" in navigator,
-    pushManager:   "PushManager" in window,
+    pushManager: "PushManager" in window,
     // FCM needs all three
-    fcm: "Notification" in window && "serviceWorker" in navigator && "PushManager" in window,
+    fcm:
+      "Notification" in window &&
+      "serviceWorker" in navigator &&
+      "PushManager" in window,
   };
   return support;
 };
@@ -71,10 +82,14 @@ export const registerServiceWorker = async () => {
   if (!("serviceWorker" in navigator)) return null;
 
   try {
-    const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
-      scope: "/",
-    });
+    const reg = await navigator.serviceWorker.register(
+      "/firebase-messaging-sw.js",
+      {
+        scope: "/",
+      },
+    );
     console.log("[FCM] Service Worker registered:", reg.scope);
+    await navigator.serviceWorker.ready; // Ensure it's active
     return reg;
   } catch (err) {
     console.error("[FCM] Service Worker registration failed:", err);
@@ -89,7 +104,11 @@ export const registerServiceWorker = async () => {
  * Returns: { token, permission, error }
  */
 export const requestNotificationPermission = async () => {
-  const result = { token: null, permission: Notification.permission, error: null };
+  const result = {
+    token: null,
+    permission: Notification.permission,
+    error: null,
+  };
 
   // Step 1 — check browser support
   const { fcm } = checkBrowserSupport();
@@ -128,8 +147,8 @@ export const requestNotificationPermission = async () => {
 
   try {
     const token = await getToken(messaging, {
-      vapidKey:                    import.meta.env.VITE_FIREBASE_VAPID_KEY,
-      serviceWorkerRegistration:   swReg,
+      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+      serviceWorkerRegistration: swReg,
     });
 
     if (token) {
@@ -175,9 +194,9 @@ export const sendLocalNotification = (title, body, options = {}) => {
   try {
     const n = new Notification(title, {
       body,
-      icon:  options.icon  || "/bell.png",
+      icon: options.icon || "/bell.png",
       badge: options.badge || "/favicon.svg",
-      tag:   options.tag   || `remindly-${Date.now()}`,
+      tag: options.tag || `remindly-${Date.now()}`,
       ...options,
     });
 

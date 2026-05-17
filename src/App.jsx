@@ -47,6 +47,7 @@ function App() {
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
 
   // Spotlight Tutorial Configuration
   const tutorialSteps = [
@@ -86,11 +87,13 @@ function App() {
       position: "right",
     },
     {
-      targetId: "btn-stats",
+      targetId: window.innerWidth < 768 ? "mobile-nav-stats-hint" : "btn-stats",
       title: "Analitik & Grafik AI",
       description:
         "Analisis performa penyelesaian tugas Anda lewat visualisasi statistik interaktif di panel ini.",
       position: "bottom",
+      onEnter: () => setIsMenuOpen(true),
+      onLeave: () => setIsMenuOpen(false),
     },
     {
       targetId: "roadmap-section",
@@ -152,6 +155,8 @@ function App() {
     tokenLoading,
     tokenError,
     support: notifSupport,
+    debugLog,
+    fcmToken,
     requestPermission: requestNotifPermission,
   } = useNotifications(user, tasks);
 
@@ -681,6 +686,12 @@ function App() {
             <LogOut size={18} />
             <span>Sign Out</span>
           </button>
+          <button
+            onClick={() => setShowDebug(true)}
+            className="text-xs text-text-muted/50 hover:text-text-primary px-5 pb-2 text-left"
+          >
+            Debug FCM
+          </button>
         </div>
       </aside>
 
@@ -722,6 +733,9 @@ function App() {
               <BarChart3 size={20} />
             </button>
           </div>
+
+          {/* Mobile fallback target for tutorial */}
+          <span id="mobile-nav-stats-hint" className="lg:hidden absolute right-5 top-1/2 -translate-y-1/2 w-10 h-10 pointer-events-none opacity-0" />
 
           {/* Mobile: Hamburger button */}
           <button
@@ -780,6 +794,16 @@ function App() {
                 >
                   <BarChart3 size={18} />
                   <span>Analytics</span>
+                </button>
+                <button
+                  className="mobile-menu-item"
+                  onClick={() => {
+                    setShowDebug(true);
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  <ListTodo size={18} />
+                  <span>Debug FCM</span>
                 </button>
                 <button
                   className="mobile-menu-item mobile-menu-item--danger"

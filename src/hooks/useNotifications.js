@@ -43,7 +43,12 @@ export const useNotifications = (user, tasks = []) => {
   const [tokenLoading,  setTokenLoading] = useState(false);
   const [tokenError,    setTokenError]   = useState(null);
   const [fcmToken,      setFcmToken]     = useState(null);
+  const [debugLog,      setDebugLog]     = useState([]); // For Debug UI
   const support                          = checkBrowserSupport();
+
+  const addDebug = useCallback((msg) => {
+    setDebugLog(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 10));
+  }, []);
 
   // Track which (taskId:threshold) pairs have already fired THIS session
   // This prevents duplicate client-side toasts on re-render
@@ -84,6 +89,7 @@ export const useNotifications = (user, tasks = []) => {
 
     if (result.token) {
       setFcmToken(result.token);
+      addDebug(`Token generated: ${result.token.substring(0, 8)}...`);
       await saveToken(result.token);
     }
 
@@ -124,10 +130,15 @@ export const useNotifications = (user, tasks = []) => {
           duration:    6000,
           icon:        "🔔",
         });
+        addDebug(`Foreground push received: ${title}`);
 
-        // Also fire a native notification (some browsers suppress SW ones when tab is open)
-        sendLocalNotification(title, body);
+        // Only fire native notification if the tab is hidden
+        // This avoids duplicate notification/bentrok with toast!
+        if (document.visibilityState === "hidden") {
+          sendLocalNotification(title, body);
+        }
       });
+      addDebug("Foreground listener attached");
     };
 
     setup();
@@ -171,14 +182,18 @@ export const useNotifications = (user, tasks = []) => {
             notifiedRef.current.add(key);
             const humanLabel = thresholdLabel(minutes);
 
-            sendLocalNotification(
-              `⏰ Deadline in ${humanLabel}!`,
-              `"${task.text}" is due at ${new Date(task.time).toLocaleTimeString([], {
-                hour:   "2-digit",
-                minute: "2-digit",
-              })}`,
-              { tag: key }
-            );
+            if (document.visibilityState === "hidden") {
+              sendLocalNotification(
+                `⏰ Deadline in ${humanLabel}!`,
+                `"${task.text}" is due at ${new Date(task.time).toLocaleTimeString([], {
+                  hour:   "2-digit",
+                  minute: "2-digit",
+                })}`,
+                { tag: key }
+              );
+            }
+
+            addDebug(`Local deadline triggered: ${task.text} (${humanLabel})`);
 
             toast.warning(`⏰ Reminder: "${task.text}"`, {
               description: `Deadline in ${humanLabel}!`,
@@ -201,6 +216,7 @@ export const useNotifications = (user, tasks = []) => {
     tokenLoading,
     tokenError,
     support,
+    debugLog,
     requestPermission,
   };
 };

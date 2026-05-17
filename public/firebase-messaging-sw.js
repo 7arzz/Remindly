@@ -55,9 +55,12 @@ messaging.onBackgroundMessage((payload) => {
     vibrate: [200, 100, 200],
     // Require interaction on desktop (notification stays until user acts)
     requireInteraction: true,
+    timestamp: Date.now(),
   };
 
-  self.registration.showNotification(title, options);
+  self.registration.showNotification(title, options)
+    .then(() => console.log("[SW] Notification shown successfully."))
+    .catch((err) => console.error("[SW] Error showing notification:", err));
 });
 
 // ─── Notification Click Handler ───────────────────────────────────────────────
