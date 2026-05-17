@@ -30,31 +30,26 @@ const messaging = firebase.messaging();
 // ─── Background Message Handler ───────────────────────────────────────────────
 // Fires when the app is in the background, minimised, or the tab is closed.
 messaging.onBackgroundMessage((payload) => {
-  console.log("[SW] Background message received:", payload);
+  console.log("[SW] Received background message: ", payload);
 
-  const title = payload?.notification?.title ?? "Remindly";
-  const body  = payload?.notification?.body  ?? "";
-  const icon  = payload?.notification?.icon  ?? "/bell.png";
-  const badge = payload?.notification?.badge ?? "/favicon.svg";
-  const tag   = payload?.data?.tag           ?? "remindly-notification";
-  const url   = payload?.data?.url           ?? "/";
+  // Extract from data payload (since we use Data-Only messages to bypass Android interception)
+  const title = payload.data?.title || "Remindly Reminder";
+  const body  = payload.data?.body  || "";
+  const url   = payload.data?.url   || "/";
+  const tag   = payload.data?.task_id || "remindly-task";
 
   const options = {
     body,
-    icon,
-    badge,
+    icon: "/bell.png",
+    badge: "/favicon.svg",
     tag,
-    // Rich notification data for click handler
-    data: { url, ...payload?.data },
-    // Action buttons
+    data: { url },
     actions: [
       { action: "open",    title: "Open Remindly" },
       { action: "dismiss", title: "Dismiss" },
     ],
-    // Vibration pattern (mobile)
     vibrate: [200, 100, 200],
-    // Require interaction on desktop (notification stays until user acts)
-    requireInteraction: true,
+    // Removed requireInteraction: true because it can cause silent failures on some mobile OS
     timestamp: Date.now(),
   };
 

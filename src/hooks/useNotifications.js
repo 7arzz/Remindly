@@ -121,8 +121,9 @@ export const useNotifications = (user, tasks = []) => {
 
     const setup = async () => {
       unsubscribe = await onForegroundMessage((payload) => {
-        const title = payload?.notification?.title ?? "Remindly";
-        const body  = payload?.notification?.body  ?? "";
+        // Because we use Data-Only messages from the server, read from payload.data
+        const title = payload?.data?.title ?? payload?.notification?.title ?? "Remindly";
+        const body  = payload?.data?.body  ?? payload?.notification?.body  ?? "";
 
         // Rich in-app toast
         toast(title, {

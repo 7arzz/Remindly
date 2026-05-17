@@ -158,25 +158,17 @@ async function sendFcmNotification(
     return { success: false, error: `Auth error: ${(err as Error).message}` };
   }
 
+  // IMPORTANT: For reliable Mobile Web Push (PWA/Android), we use a "Data-Only" payload.
+  // We MUST NOT include the root "notification" object. If we do, Chrome Android intercepts
+  // the push and ignores our firebase-messaging-sw.js, which often results in silent failures.
   const message = {
     message: {
       token: fcmToken,
-      notification: { title, body },
-      data: { ...data, url: "/" },
-      webpush: {
-        notification: {
-          title,
-          body,
-          icon:  "/bell.png",
-          badge: "/favicon.svg",
-          requireInteraction: true,
-          vibrate: [200, 100, 200],
-          actions: [
-            { action: "open",    title: "Open Remindly" },
-            { action: "dismiss", title: "Dismiss" },
-          ],
-        },
-        fcm_options: { link: "/" },
+      data: {
+        title: title,
+        body: body,
+        url: "/",
+        ...data
       },
     },
   };
@@ -278,17 +270,42 @@ Deno.serve(async (req: Request) => {
 
   // ── 3. Process each task × each threshold ───────────────────────────────────
   for (const task of taskList) {
-    const deadlineMs = new Date(task.time).getTime();
+    // Prevent timezone bugs: if the DB time string lacks timezone info, Deno parses as UTC.
+    // Since the client sends local time (from datetime-local), we append the local timezone
+    // offset (+07:00 for WIB/Jakarta) to match the browser's local time evaluation.
+    let timeStr = task.time;
+    if (
+      !timeStr.endsWith("Z") &&
+      !timeStr.match(/[+-]\d{2}:\d{2}$/)
+    ) {
+      timeStr += "+07:00";
+    }
+    const deadlineMs = new Date(timeStr).getTime();
+    const diffMs = deadlineMs - nowMs;
+    const diffMinutes = Math.round(diffMs / 60000);
+
+    console.log(`[DEBUG] 📝 Checking Task ID: ${task.id} | "${task.text}"`);
+    console.log(`[DEBUG]     Parsed time: ${new Date(deadlineMs).toISOString()} (Original: ${task.time})`);
+    console.log(`[DEBUG]     Current Deno time: ${now.toISOString()}`);
+    console.log(`[DEBUG]     Diff: ${diffMinutes} minutes`);
 
     for (const threshold of THRESHOLDS) {
       // Skip if already notified for this threshold
-      if (task[threshold.field]) continue;
+      if (task[threshold.field]) {
+        console.log(`[DEBUG]     ⏭  Skipping ${threshold.label} (already notified)`);
+        continue;
+      }
 
-      const fireAtMs     = deadlineMs - threshold.minutes * 60 * 1000;
-      const toleranceMs  = 90_000; // ±90 seconds (cron runs every minute)
+      const fireAtMs = deadlineMs - threshold.minutes * 60 * 1000;
+      // Use a wider window (e.g. 15 minutes) instead of ±90s to ensure cron catches it 
+      // even if delayed, but caps it so we don't spam old notifications.
+      const windowEndMs = fireAtMs + (15 * 60 * 1000); 
+      
+      const isMatch = nowMs >= fireAtMs && nowMs <= windowEndMs;
+      console.log(`[DEBUG]     🎯 Threshold: ${threshold.label} | Fire At: ${new Date(fireAtMs).toISOString()} | Match: ${isMatch}`);
 
       // Only fire if we're within the notification window
-      if (nowMs < fireAtMs - toleranceMs || nowMs > fireAtMs + toleranceMs) continue;
+      if (!isMatch) continue;
 
       const fcmToken = tokenMap.get(task.user_id);
       if (!fcmToken) {
