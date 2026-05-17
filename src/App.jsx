@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { 
   BarChart3, Trash2, ListTodo, LogIn, LogOut, 
-  Globe, FileText, CheckCircle2 
+  Globe, FileText, CheckCircle2, HelpCircle, Menu, X
 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -16,6 +16,8 @@ import SummarySection from "./components/SummarySection";
 import AddRoadmap from "./components/AddRoadmap";
 import RoadmapCard from "./components/RoadmapCard";
 import NotificationPermissionBanner from "./components/NotificationPermissionBanner";
+import SpotlightTutorial from "./components/SpotlightTutorial";
+import { useTutorial } from "./hooks/useTutorial";
 import { supabase, loginWithGoogle, logout } from "./supabase";
 import { toast } from "sonner";
 import { useNotifications } from "./hooks/useNotifications";
@@ -35,6 +37,75 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Spotlight Tutorial Configuration
+  const tutorialSteps = useMemo(() => [
+    {
+      targetId: "nav-tasks",
+      title: "Daftar Tugas Premium",
+      description: "Kelola daftar tugas harian Anda di sini. Dilengkapi sinkronisasi real-time dengan Supabase database.",
+      position: "right",
+    },
+    {
+      targetId: "task-input-container",
+      title: "Tambah Tugas Baru",
+      description: "Gunakan form ini untuk membuat tugas baru. Masukkan detail tugas, tentukan prioritas, atur deadline, unggah gambar pendukung, dan setel AI reminder offset.",
+      position: "bottom",
+    },
+    {
+      targetId: "progress-bar-container",
+      title: "Progress Tracker",
+      description: "Pantau kemajuan Anda secara visual. Progress bar ini akan terisi otomatis saat Anda menandai tugas sebagai selesai.",
+      position: "bottom",
+    },
+    {
+      targetId: "nav-summaries",
+      title: "Knowledge Hub",
+      description: "Punya foto catatan, dokumen tugas, atau papan tulis? Unggah di sini dan biarkan Gemini AI merangkum isi foto tersebut menjadi catatan digital secara cerdas.",
+      position: "right",
+    },
+    {
+      targetId: "summary-section",
+      title: "Ringkasan AI",
+      description: "Lihat semua rangkasan dan catatan Anda yang dihasilkan AI pada panel ini. Anda dapat menambah, mengedit, atau menghapus rangkasan.",
+      position: "right",
+    },
+    {
+      targetId: "btn-stats",
+      title: "Analitik & Grafik AI",
+      description: "Analisis performa penyelesaian tugas Anda lewat visualisasi statistik interaktif di panel ini.",
+      position: "bottom",
+    },
+    {
+      targetId: "roadmap-section",
+      title: "Roadmap Strategis",
+      description: "Kelola rencana jangka panjang Anda dengan menambahkan, mengedit, dan menandai langkah-langkah penting.",
+      position: "right",
+    },
+  ], []);
+
+  const {
+    isActive: isTutorialActive,
+    currentStep: tutorialCurrentStep,
+    totalSteps: tutorialTotalSteps,
+    goNext: tutorialGoNext,
+    goPrev: tutorialGoPrev,
+    skip: tutorialSkip,
+    restart: restartTutorial,
+  } = useTutorial(tutorialSteps);
+
+  // Tab auto-switching logic during tutorial to keep targeted elements on screen
+  useEffect(() => {
+    if (!isTutorialActive) return;
+    if (tutorialCurrentStep === 3) {
+      setActiveTab("summaries");
+    } else if (tutorialCurrentStep === 6) {
+      setActiveTab("roadmap");
+    } else if (tutorialCurrentStep <= 2) {
+      setActiveTab("tasks");
+    }
+  }, [tutorialCurrentStep, isTutorialActive]);
 
   // Auth Listener
   useEffect(() => {
@@ -515,6 +586,7 @@ function App() {
 
         <nav className="flex flex-col gap-3">
           <button 
+            id="nav-tasks"
             onClick={() => setActiveTab("tasks")}
             className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${
               activeTab === "tasks" ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10" : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
@@ -524,6 +596,7 @@ function App() {
             <span>Tasks</span>
           </button>
           <button 
+            id="nav-summaries"
             onClick={() => setActiveTab("summaries")}
             className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${
               activeTab === "summaries" ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10" : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
@@ -533,6 +606,7 @@ function App() {
             <span>Summaries</span>
           </button>
           <button 
+            id="nav-roadmap"
             onClick={() => setActiveTab("roadmap")}
             className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${
               activeTab === "roadmap" ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10" : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
@@ -565,28 +639,96 @@ function App() {
 
       {/* Main Content Area */}
       <main className="main-content">
-        {/* Top Header (Search & Stats) */}
-        <header className="h-20 border-b border-border-primary/30 flex items-center justify-between px-6 sm:px-10 bg-bg-primary/50 backdrop-blur-md z-40">
+        {/* Top Header */}
+        <header className="h-20 border-b border-border-primary/30 flex items-center justify-between px-5 sm:px-10 bg-bg-primary/50 backdrop-blur-md z-40 relative">
+          {/* Mobile: Logo */}
           <div className="lg:hidden flex items-center gap-3">
-             <ListTodo size={24} className="text-accent-primary" />
-             <span className="font-black text-lg tracking-tight">Remindly</span>
+            <ListTodo size={24} className="text-accent-primary" />
+            <span className="font-black text-lg tracking-tight">Remindly</span>
           </div>
+
+          {/* Desktop: page label */}
           <div className="hidden lg:block">
             <span className="text-xs font-black uppercase tracking-[0.2em] text-text-muted">
               {activeTab === "tasks" ? "Managing Tasks" : activeTab === "summaries" ? "Knowledge Hub" : "Strategic Roadmap"}
             </span>
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Desktop buttons (always visible on lg+) */}
+          <div className="hidden lg:flex items-center gap-3">
             <button
+              title="Mulai Ulang Tutorial"
+              className="p-3 rounded-xl bg-bg-secondary/50 text-text-secondary hover:text-accent-primary transition-all border border-border-primary/30 flex items-center justify-center"
+              onClick={restartTutorial}
+            >
+              <HelpCircle size={20} />
+            </button>
+            <button
+              id="btn-stats"
               className="p-3 rounded-xl bg-bg-secondary/50 text-text-secondary hover:text-accent-primary transition-all border border-border-primary/30"
               onClick={() => setIsStatsOpen(true)}
             >
               <BarChart3 size={20} />
             </button>
-            <button className="lg:hidden p-3 rounded-xl bg-bg-secondary/50 text-text-secondary hover:text-rose-400 border border-border-primary/30" onClick={logout}>
-              <LogOut size={20} />
-            </button>
           </div>
+
+          {/* Mobile: Hamburger button */}
+          <button
+            className="lg:hidden p-2.5 rounded-xl bg-bg-secondary/60 border border-border-primary/40 text-text-secondary hover:text-accent-primary hover:border-accent-primary/30 transition-all"
+            onClick={() => setIsMenuOpen((v) => !v)}
+            aria-label="Toggle menu"
+            aria-expanded={isMenuOpen}
+          >
+            {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+
+          {/* Mobile Hamburger Dropdown */}
+          {isMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 z-[200]"
+                onClick={() => setIsMenuOpen(false)}
+              />
+              {/* Menu sheet */}
+              <div className="mobile-hamburger-menu">
+                {/* User info */}
+                <div className="flex items-center gap-3 px-1 pb-3 mb-1 border-b border-border-primary/40">
+                  <div className="w-9 h-9 rounded-full bg-bg-card border border-border-primary flex items-center justify-center text-accent-primary font-black text-sm flex-shrink-0">
+                    {user.email[0].toUpperCase()}
+                  </div>
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="text-sm font-bold text-text-primary truncate">{user.user_metadata?.full_name || user.email.split('@')[0]}</span>
+                    <span className="text-[10px] text-text-muted truncate">{user.email}</span>
+                  </div>
+                </div>
+
+                {/* Menu items */}
+                <button
+                  className="mobile-menu-item"
+                  onClick={() => { restartTutorial(); setIsMenuOpen(false); }}
+                >
+                  <HelpCircle size={18} />
+                  <span>Guided Tour</span>
+                </button>
+                <button
+                  id="btn-stats"
+                  className="mobile-menu-item"
+                  onClick={() => { setIsStatsOpen(true); setIsMenuOpen(false); }}
+                >
+                  <BarChart3 size={18} />
+                  <span>Analytics</span>
+                </button>
+                <button
+                  className="mobile-menu-item mobile-menu-item--danger"
+                  onClick={() => { logout(); setIsMenuOpen(false); }}
+                >
+                  <LogOut size={18} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </>
+          )}
         </header>
 
         {/* Notification Permission Banner */}
@@ -603,18 +745,22 @@ function App() {
           <div className="max-w-5xl mx-auto w-full">
             {activeTab === "tasks" ? (
               <div className="flex flex-col gap-6 sm:gap-10 fadeIn">
-                <ProgressBar tasks={tasks} />
-                <div className="glass-card overflow-hidden">
+                <div id="progress-bar-container">
+                  <ProgressBar tasks={tasks} />
+                </div>
+                <div id="task-input-container" className="glass-card overflow-hidden">
                   <TaskInput addTask={addTask} />
                 </div>
-                <FilterControls
-                  filter={filter}
-                  setFilter={setFilter}
-                  sortBy={sortBy}
-                  setSortBy={setSortBy}
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                />
+                <div id="filter-controls-container">
+                  <FilterControls
+                    filter={filter}
+                    setFilter={setFilter}
+                    sortBy={sortBy}
+                    setSortBy={setSortBy}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                  />
+                </div>
                 <div className="flex justify-between items-center px-2">
                   <h2 className="text-2xl font-black text-text-primary tracking-tight">Tasks</h2>
                   <button className="icon-btn text-text-muted hover:text-red-400" onClick={clearAll}>
@@ -634,11 +780,11 @@ function App() {
                 />
               </div>
             ) : activeTab === "summaries" ? (
-              <div className="fadeIn">
+              <div id="summary-section" className="fadeIn">
                 <SummarySection currentUser={user} />
               </div>
             ) : (
-              <div className="roadmap-container fadeIn">
+              <div id="roadmap-section" className="roadmap-container fadeIn">
                 <div className="roadmap-header-content">
                   <div>
                     <h2 className="text-3xl font-black text-text-primary tracking-tight">Goal Roadmap</h2>
@@ -681,6 +827,7 @@ function App() {
         {/* Mobile Navigation */}
         <nav className="mobile-nav">
           <button 
+            id="mobile-nav-tasks"
             onClick={() => setActiveTab("tasks")}
             className={`nav-item-mobile ${activeTab === "tasks" ? "active" : ""}`}
           >
@@ -688,6 +835,7 @@ function App() {
             <span className="text-[10px] font-bold uppercase tracking-widest">Tasks</span>
           </button>
           <button 
+            id="mobile-nav-summaries"
             onClick={() => setActiveTab("summaries")}
             className={`nav-item-mobile ${activeTab === "summaries" ? "active" : ""}`}
           >
@@ -695,6 +843,7 @@ function App() {
             <span className="text-[10px] font-bold uppercase tracking-widest">Knowledge</span>
           </button>
           <button 
+            id="mobile-nav-roadmap"
             onClick={() => setActiveTab("roadmap")}
             className={`nav-item-mobile ${activeTab === "roadmap" ? "active" : ""}`}
           >
@@ -724,6 +873,17 @@ function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* Spotlight / Focus Tutorial */}
+      <SpotlightTutorial
+        steps={tutorialSteps}
+        isActive={isTutorialActive}
+        currentStep={tutorialCurrentStep}
+        totalSteps={tutorialTotalSteps}
+        onNext={tutorialGoNext}
+        onPrev={tutorialGoPrev}
+        onSkip={tutorialSkip}
+      />
     </div>
   );
 }

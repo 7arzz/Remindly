@@ -747,3 +747,377 @@
     justify-content: center;
   }
 }
+
+/* ─── Mobile Hamburger Menu ──────────────────────────────────────────────── */
+.mobile-hamburger-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 16px;
+  z-index: 9999;
+  width: 220px;
+  background: linear-gradient(145deg, #112240ee, #0a192fee);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(100, 255, 218, 0.18);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(100, 255, 218, 0.06);
+  animation: hamburger-drop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@keyframes hamburger-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.mobile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+
+.mobile-menu-item:hover {
+  background: rgba(100, 255, 218, 0.08);
+  color: var(--text-primary);
+}
+
+.mobile-menu-item--danger:hover {
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPOTLIGHT TUTORIAL – Coach Mark Onboarding System  (Responsive v2)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Overlay ── */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: auto;
+  animation: tutorial-overlay-in 0.35s ease-out forwards;
+}
+
+@keyframes tutorial-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Glow ring (positioned directly on the spotlight element) ── */
+.tutorial-glow-ring {
+  position: fixed;
+  z-index: 9001;
+  pointer-events: none;
+  border: 2px solid var(--accent-primary);
+  box-shadow:
+    0 0 0 4px rgba(100, 255, 218, 0.12),
+    0 0 32px 8px rgba(100, 255, 218, 0.28),
+    inset 0 0 20px rgba(100, 255, 218, 0.06);
+  animation: tutorial-glow-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes tutorial-glow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 4px rgba(100, 255, 218, 0.12),
+      0 0 32px 8px rgba(100, 255, 218, 0.28),
+      inset 0 0 20px rgba(100, 255, 218, 0.06);
+  }
+  50% {
+    box-shadow:
+      0 0 0 10px rgba(100, 255, 218, 0.06),
+      0 0 56px 16px rgba(100, 255, 218, 0.38),
+      inset 0 0 32px rgba(100, 255, 218, 0.10);
+  }
+}
+
+/* ── Tooltip Card ── */
+.tutorial-tooltip {
+  position: fixed;
+  z-index: 9100;
+  background: linear-gradient(145deg, #112240, #0a192f);
+  border: 1px solid rgba(100, 255, 218, 0.25);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(100, 255, 218, 0.06),
+    0 4px 28px rgba(100, 255, 218, 0.12);
+  animation: tutorial-tooltip-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  /* Ensure tooltip never grows taller than the viewport */
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@keyframes tutorial-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tutorial-tooltip--fade {
+  opacity: 0.4;
+  transform: scale(0.97);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* ── Tooltip Header ── */
+.tutorial-tooltip__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.tutorial-tooltip__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(100, 255, 218, 0.1);
+  border: 1px solid rgba(100, 255, 218, 0.2);
+  color: var(--accent-primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.tutorial-tooltip__close {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  /* Larger tap target */
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.tutorial-tooltip__close:hover {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.3);
+  color: #f87171;
+}
+
+/* ── Tooltip Content ── */
+.tutorial-tooltip__content {
+  margin-bottom: 18px;
+}
+
+.tutorial-content--in {
+  animation: tutorial-content-in 0.28s ease-out forwards;
+}
+
+.tutorial-content--out {
+  animation: tutorial-content-out 0.2s ease-in forwards;
+}
+
+@keyframes tutorial-content-in {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes tutorial-content-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-10px); }
+}
+
+.tutorial-tooltip__title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+
+.tutorial-tooltip__desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* ── Tooltip Footer ── */
+.tutorial-tooltip__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+}
+
+/* ── Progress dots ── */
+.tutorial-progress {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.tutorial-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-primary);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-shrink: 0;
+}
+
+.tutorial-dot--active {
+  background: var(--accent-primary);
+  width: 20px;
+  border-radius: 3px;
+  box-shadow: 0 0 8px rgba(100, 255, 218, 0.5);
+}
+
+.tutorial-dot--done {
+  background: rgba(100, 255, 218, 0.35);
+}
+
+.tutorial-progress__label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+/* ── Navigation Buttons ── */
+.tutorial-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tutorial-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: none;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+  /* 44px touch target minimum */
+  min-height: 44px;
+}
+
+.tutorial-btn--primary {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+}
+
+.tutorial-btn--primary:hover {
+  background: rgba(100, 255, 218, 0.88);
+  transform: scale(1.04);
+  box-shadow: 0 4px 18px rgba(100, 255, 218, 0.32);
+}
+
+.tutorial-btn--primary:active {
+  transform: scale(0.96);
+}
+
+.tutorial-btn--ghost {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tutorial-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Mobile (< 640px): tooltip is a bottom sheet above mobile nav ── */
+@media (max-width: 640px) {
+  .tutorial-tooltip {
+    border-radius: 20px 20px 16px 16px;
+    padding: 16px;
+    /* JS sets left/right/bottom via inline style on mobile;
+       these fallbacks ensure it never breaks layout */
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    top: auto !important;
+    /* Safe area: bottom accounts for mobile nav + iOS home bar */
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px) + 8px) !important;
+    max-height: 55dvh;
+    overflow-y: auto;
+  }
+
+  .tutorial-tooltip__title {
+    font-size: 15px;
+  }
+
+  .tutorial-tooltip__desc {
+    font-size: 12px;
+  }
+
+  .tutorial-tooltip__footer {
+    gap: 8px;
+  }
+
+  .tutorial-btn {
+    font-size: 12px;
+    padding: 9px 14px;
+  }
+}
+
+/* ── Tablet (641 – 1023px) ── */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .tutorial-tooltip {
+    max-width: 360px;
+  }
+}
+

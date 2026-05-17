@@ -6,7 +6,7 @@ import { registerSW } from "virtual:pwa-register";
 
 import { Toaster } from "sonner";
 
-registerSW({ immediate: true });
+registerSW();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

@@ -1,10 +1,53 @@
 import { motion as Motion, AnimatePresence } from "framer-motion";
+import { X, BarChart3, TrendingUp, CheckCircle, Clock } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-import { X, BarChart3, History, CheckCircle, Clock } from "lucide-react";
+// Custom tooltip for chart
+const CustomTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    if (data.name === 'Start') return null;
+    return (
+      <div className="bg-bg-card border border-border-primary p-3 rounded-xl shadow-xl z-50">
+        <p className="text-xs font-bold text-text-primary mb-1">{data.taskName}</p>
+        <p className={`text-[10px] font-black uppercase tracking-widest ${data.status === 'Selesai' ? 'text-accent-primary' : 'text-rose-400'}`}>
+          {data.status} (Score: {data.score})
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
 
 function StatsDrawer({ isOpen, onClose, tasks, history }) {
   const completedToday = tasks.filter((t) => t.done).length;
   const totalTasks = tasks.length;
+
+  // Calculate chart data: naik jika selesai, turun jika tidak selesai
+  const sortedTasks = [...tasks].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  let currentScore = 0;
+  const chartData = [{ name: 'Start', score: 0 }];
+  
+  sortedTasks.forEach((task, index) => {
+    if (task.done) {
+      currentScore += 1;
+    } else {
+      currentScore -= 1;
+    }
+    
+    // Format tanggal untuk sumbu X (misal: "17 Mei")
+    const dateLabel = new Date(task.created_at).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short'
+    });
+
+    chartData.push({
+      name: dateLabel,
+      score: currentScore,
+      taskName: task.text,
+      status: task.done ? 'Selesai' : 'Belum Selesai'
+    });
+  });
 
   return (
     <AnimatePresence>
@@ -52,27 +95,34 @@ function StatsDrawer({ isOpen, onClose, tasks, history }) {
 
             <div className="flex flex-col gap-4 flex-1">
               <div className="flex items-center gap-2 px-1">
-                <History size={16} className="text-accent-primary/60" />
-                <h4 className="text-xs font-black uppercase tracking-widest text-text-secondary">Recent History</h4>
+                <TrendingUp size={16} className="text-accent-primary/60" />
+                <h4 className="text-xs font-black uppercase tracking-widest text-text-secondary">Performance Graph</h4>
               </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-3">
-                {history.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-40">
-                    <History size={40} className="text-text-muted" />
-                    <p className="text-xs font-bold uppercase tracking-widest text-text-muted text-center">No history recorded yet</p>
+              <div className="flex-1 w-full bg-bg-secondary/30 rounded-2xl p-4 border border-border-primary/50 flex flex-col justify-center min-h-[250px]">
+                {tasks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-3 opacity-40 h-full">
+                    <TrendingUp size={40} className="text-text-muted" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-text-muted text-center">Belum ada data tugas</p>
                   </div>
                 ) : (
-                  history.map((item) => (
-                    <div key={item.id} className="group relative pl-4 border-l-2 border-border-primary hover:border-accent-primary transition-colors py-1">
-                      <div className="absolute left-[-5px] top-2 w-2 h-2 rounded-full bg-border-primary group-hover:bg-accent-primary transition-colors" />
-                      <span className="text-sm font-bold text-text-primary block leading-tight mb-1">{item.text}</span>
-                      <div className="flex items-center gap-2 text-[10px] font-medium text-text-muted uppercase tracking-tighter">
-                        <CheckCircle size={10} className="text-accent-primary/60" />
-                        <span>Completed at {new Date(item.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                      </div>
-                    </div>
-                  ))
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                      <XAxis dataKey="name" stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="score" 
+                        stroke="#64ffda" 
+                        strokeWidth={3} 
+                        dot={{ r: 4, fill: '#112240', stroke: '#64ffda', strokeWidth: 2 }} 
+                        activeDot={{ r: 6, fill: '#64ffda' }}
+                        animationDuration={1500}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 )}
               </div>
             </div>
