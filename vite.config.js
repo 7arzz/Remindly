@@ -7,6 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "prompt",
+      workbox: {
+        importScripts: ["/firebase-messaging-sw.js"],
+      },
       devOptions: {
         enabled: false,
       },

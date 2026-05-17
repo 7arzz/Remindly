@@ -82,13 +82,14 @@ export const registerServiceWorker = async () => {
   if (!("serviceWorker" in navigator)) return null;
 
   try {
-    const reg = await navigator.serviceWorker.register(
-      "/firebase-messaging-sw.js",
-      {
-        scope: "/",
-      },
-    );
-    console.log("[FCM] Service Worker registered:", reg.scope);
+    // In production, Vite PWA generates 'sw.js' which imports our firebase script.
+    // In development, Vite PWA is disabled, so we directly register the firebase script.
+    const swUrl = import.meta.env.MODE === "production" ? "/sw.js" : "/firebase-messaging-sw.js";
+    
+    const reg = await navigator.serviceWorker.register(swUrl, {
+      scope: "/",
+    });
+    console.log(`[FCM] Service Worker registered (${swUrl}):`, reg.scope);
     await navigator.serviceWorker.ready; // Ensure it's active
     return reg;
   } catch (err) {
