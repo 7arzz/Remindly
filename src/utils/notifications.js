@@ -4,11 +4,17 @@
  * Re-exports the two most-used functions from lib/firebase for convenience.
  */
 
-export {
+import {
   sendLocalNotification,
   requestNotificationPermission,
   checkBrowserSupport,
 } from "../lib/firebase";
+
+export {
+  sendLocalNotification,
+  requestNotificationPermission,
+  checkBrowserSupport,
+};
 
 /**
  * Schedules a one-shot local notification at a specific Date.
@@ -25,8 +31,6 @@ export const scheduleLocalNotification = (title, body, fireAt, options = {}) => 
   const delay = new Date(fireAt).getTime() - Date.now();
   if (delay <= 0) return null; // already past
 
-  const { sendLocalNotification } = await import("../lib/firebase");
-
   const id = setTimeout(() => {
     sendLocalNotification(title, body, options);
   }, delay);
@@ -39,7 +43,6 @@ export const scheduleLocalNotification = (title, body, fireAt, options = {}) => 
  * Used for immediate "tab-open" reminders.
  */
 export const notifyDeadline = (taskText, deadlineDate, minutesLeft) => {
-  const { sendLocalNotification } = require("../lib/firebase");
   const label =
     minutesLeft >= 60
       ? `${minutesLeft / 60}h`
