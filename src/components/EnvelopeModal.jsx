@@ -1,22 +1,30 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Pencil, Save, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 
-const EnvelopeModal = ({ task, isOpen, onClose }) => {
+const EnvelopeModal = ({ task, isOpen, onClose, onUpdate }) => {
   const [envelopeOpen, setEnvelopeOpen] = useState(false);
   const [paperOut, setPaperOut] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState("");
+  const [editDetail, setEditDetail] = useState("");
 
   useEffect(() => {
     if (!isOpen) {
       setEnvelopeOpen(false);
       setPaperOut(false);
       setIsAnimating(false);
+      setIsEditing(false);
+    } else if (task) {
+      setEditText(task.text);
+      setEditDetail(task.detail || "");
     }
-  }, [isOpen]);
+  }, [isOpen, task]);
 
   const handleToggle = () => {
-    if (isAnimating) return;
+    if (isAnimating || isEditing) return;
     setIsAnimating(true);
 
     if (!envelopeOpen) {
@@ -36,6 +44,24 @@ const EnvelopeModal = ({ task, isOpen, onClose }) => {
     }
   };
 
+  const handleSave = async () => {
+    if (!editText.trim()) {
+      toast.error("Title cannot be empty");
+      return;
+    }
+
+    try {
+      await onUpdate(task.id, {
+        text: editText,
+        detail: editDetail,
+      });
+      setIsEditing(false);
+      toast.success("Task updated!");
+    } catch (error) {
+      toast.error("Failed to update task");
+    }
+  };
+
   if (!task) return null;
 
   return (
@@ -46,7 +72,7 @@ const EnvelopeModal = ({ task, isOpen, onClose }) => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="envelope-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && onClose()}
+          onClick={(e) => e.target === e.currentTarget && !isEditing && onClose()}
         >
           <button 
             onClick={onClose}
@@ -61,18 +87,72 @@ const EnvelopeModal = ({ task, isOpen, onClose }) => {
             
             {/* Paper with Task Content */}
             <div className={`envelope-paper custom-scrollbar ${paperOut ? 'out' : ''}`}>
-              <h2 className="text-xl font-bold mb-4 border-b-2 border-blue-500 pb-2 text-blue-800">
-                {task.text}
-              </h2>
+              <div className="flex justify-between items-start mb-4 border-b-2 border-blue-500 pb-2">
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    className="text-xl font-bold text-blue-800 bg-blue-50/50 border-none focus:outline-none w-full mr-2 rounded px-1"
+                    placeholder="Task Title"
+                    autoFocus
+                  />
+                ) : (
+                  <h2 className="text-xl font-bold text-blue-800">
+                    {task.text}
+                  </h2>
+                )}
+                
+                {paperOut && !isAnimating && (
+                  <div className="flex gap-1">
+                    {isEditing ? (
+                      <>
+                        <button 
+                          onClick={() => setIsEditing(false)}
+                          className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
+                          title="Cancel"
+                        >
+                          <RotateCcw size={16} />
+                        </button>
+                        <button 
+                          onClick={handleSave}
+                          className="p-1.5 text-emerald-500 hover:text-emerald-600 transition-colors"
+                          title="Save"
+                        >
+                          <Save size={16} />
+                        </button>
+                      </>
+                    ) : (
+                      <button 
+                        onClick={() => setIsEditing(true)}
+                        className="p-1.5 text-blue-400 hover:text-blue-600 transition-colors"
+                        title="Edit Task"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-6">
                 <section>
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Task Details</h3>
-                  <p className="text-sm leading-relaxed text-slate-600 italic">
-                    {task.detail || "No additional details provided."}
-                  </p>
+                  {isEditing ? (
+                    <textarea
+                      value={editDetail}
+                      onChange={(e) => setEditDetail(e.target.value)}
+                      className="w-full text-sm leading-relaxed text-slate-600 italic bg-slate-50 border-none focus:outline-none rounded p-2 min-h-[100px] resize-none"
+                      placeholder="Add details..."
+                    />
+                  ) : (
+                    <p className="text-sm leading-relaxed text-slate-600 italic">
+                      {task.detail || "No additional details provided."}
+                    </p>
+                  )}
                 </section>
 
-                {task.image_url && (
+                {task.image_url && !isEditing && (
                   <motion.section 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -90,7 +170,7 @@ const EnvelopeModal = ({ task, isOpen, onClose }) => {
                   </motion.section>
                 )}
                 
-                {(task.answers && task.answers.length > 0) ? (
+                {(!isEditing && (task.answers && task.answers.length > 0)) ? (
                   <section>
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-3">Answers / Solutions</h3>
                     <div className="space-y-3">
@@ -105,7 +185,7 @@ const EnvelopeModal = ({ task, isOpen, onClose }) => {
                       ))}
                     </div>
                   </section>
-                ) : task.answer ? (
+                ) : (!isEditing && task.answer) ? (
                    <section>
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-2">Answer</h3>
                     <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100 text-sm text-emerald-800">
@@ -139,16 +219,18 @@ const EnvelopeModal = ({ task, isOpen, onClose }) => {
 
             {/* Seal / Star Button */}
             <button 
-              className={`envelope-star-btn ${envelopeOpen ? 'side' : ''}`}
+              className={`envelope-star-btn ${envelopeOpen ? 'side' : ''} ${isEditing ? 'opacity-0 pointer-events-none' : ''}`}
               onClick={handleToggle}
             >
               {task.text.length > 15 ? task.text.substring(0, 15) + '...' : task.text}
             </button>
           </div>
 
-          <div className="fixed bottom-10 text-white/60 text-sm font-medium animate-pulse">
-            {envelopeOpen ? "Click to seal the envelope" : "Click the seal to read the message"}
-          </div>
+          {!isEditing && (
+            <div className="fixed bottom-10 text-white/60 text-sm font-medium animate-pulse">
+              {envelopeOpen ? "Click to seal the envelope" : "Click the seal to read the message"}
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

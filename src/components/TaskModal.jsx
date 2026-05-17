@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+import { useState, useEffect } from "react";
 import {
   X,
   Calendar,
@@ -10,7 +11,10 @@ import {
   Circle,
   Trash2,
   Bell,
+  Pencil,
+  Save,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const TaskModal = ({
   task,
@@ -18,11 +22,47 @@ const TaskModal = ({
   onClose,
   onDelete,
   toggleDone,
+  onUpdate,
   currentUser,
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState("");
+  const [editDetail, setEditDetail] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editPriority, setEditPriority] = useState("");
+
+  useEffect(() => {
+    if (task) {
+      setEditText(task.text);
+      setEditDetail(task.detail || "");
+      setEditTime(task.time);
+      setEditPriority(task.priority);
+    }
+  }, [task]);
+
   if (!task) return null;
 
   const isOwner = currentUser && task.user_email === currentUser.email;
+
+  const handleSave = async () => {
+    if (!editText.trim()) {
+      toast.error("Task title cannot be empty");
+      return;
+    }
+
+    try {
+      await onUpdate(task.id, {
+        text: editText,
+        detail: editDetail,
+        time: editTime,
+        priority: editPriority,
+      });
+      setIsEditing(false);
+      toast.success("Task updated successfully!");
+    } catch (error) {
+      toast.error("Failed to update task");
+    }
+  };
 
   return createPortal(
     <div
@@ -60,29 +100,63 @@ const TaskModal = ({
 
             {/* Top Actions */}
             <div className="absolute top-4 left-4 right-4 flex items-start justify-between">
-              {task.done ? (
-                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-accent-primary/20 text-accent-primary border border-accent-primary/30 backdrop-blur-md">
-                  Completed
-                </span>
-              ) : (
-                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-400/30 backdrop-blur-md">
-                  Pending
-                </span>
-              )}
+              <div className="flex gap-2">
+                {task.done ? (
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-accent-primary/20 text-accent-primary border border-accent-primary/30 backdrop-blur-md">
+                    Completed
+                  </span>
+                ) : (
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-400/30 backdrop-blur-md">
+                    Pending
+                  </span>
+                )}
+                
+                {isEditing && (
+                  <select
+                    value={editPriority}
+                    onChange={(e) => setEditPriority(e.target.value)}
+                    className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-bg-card/40 text-white border border-white/20 backdrop-blur-md focus:outline-none"
+                  >
+                    <option value="low" className="bg-bg-card">Low</option>
+                    <option value="medium" className="bg-bg-card">Medium</option>
+                    <option value="high" className="bg-bg-card">High</option>
+                  </select>
+                )}
+              </div>
 
-              <button
-                onClick={onClose}
-                className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-all"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex gap-2">
+                {isOwner && !isEditing && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-all"
+                  >
+                    <Pencil size={18} />
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-all"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Title */}
             <div className="absolute bottom-0 left-0 right-0 p-6">
-              <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight">
-                {task.text}
-              </h2>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  className="w-full bg-black/20 backdrop-blur-md border border-white/20 rounded-xl px-4 py-2 text-2xl sm:text-3xl font-black text-white focus:outline-none focus:border-white/40"
+                  placeholder="Task Title"
+                />
+              ) : (
+                <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight">
+                  {task.text}
+                </h2>
+              )}
             </div>
           </div>
 
@@ -98,8 +172,20 @@ const TaskModal = ({
 
                 <div className="flex items-center gap-2 text-sm font-bold text-text-primary">
                   <Calendar size={14} className="text-accent-primary" />
-
-                  <span>{new Date(task.time).toLocaleDateString()}</span>
+                  {isEditing ? (
+                    <input
+                      type="date"
+                      value={editTime.split('T')[0]}
+                      onChange={(e) => {
+                        const newDate = e.target.value;
+                        const currentTime = editTime.split('T')[1];
+                        setEditTime(`${newDate}T${currentTime}`);
+                      }}
+                      className="bg-transparent border-none focus:outline-none text-accent-primary"
+                    />
+                  ) : (
+                    <span>{new Date(task.time).toLocaleDateString()}</span>
+                  )}
                 </div>
               </div>
 
@@ -111,13 +197,25 @@ const TaskModal = ({
 
                 <div className="flex items-center gap-2 text-sm font-bold text-text-primary">
                   <Clock size={14} className="text-accent-primary" />
-
-                  <span>
-                    {new Date(task.time).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+                  {isEditing ? (
+                    <input
+                      type="time"
+                      value={editTime.split('T')[1]?.substring(0, 5)}
+                      onChange={(e) => {
+                        const newTime = e.target.value;
+                        const currentDate = editTime.split('T')[0];
+                        setEditTime(`${currentDate}T${newTime}`);
+                      }}
+                      className="bg-transparent border-none focus:outline-none text-accent-primary"
+                    />
+                  ) : (
+                    <span>
+                      {new Date(task.time).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -165,44 +263,74 @@ const TaskModal = ({
                 Description
               </h3>
 
-              <div className="text-text-secondary leading-relaxed whitespace-pre-wrap bg-bg-secondary/30 p-5 rounded-2xl border border-border-primary/30">
-                {task.detail ||
-                  "No additional details provided for this task."}
-              </div>
+              {isEditing ? (
+                <textarea
+                  value={editDetail}
+                  onChange={(e) => setEditDetail(e.target.value)}
+                  rows={4}
+                  className="w-full bg-bg-secondary/30 p-5 rounded-2xl border border-border-primary/30 text-text-secondary focus:outline-none focus:border-accent-primary transition-all resize-none"
+                  placeholder="Task description..."
+                />
+              ) : (
+                <div className="text-text-secondary leading-relaxed whitespace-pre-wrap bg-bg-secondary/30 p-5 rounded-2xl border border-border-primary/30">
+                  {task.detail ||
+                    "No additional details provided for this task."}
+                </div>
+              )}
             </div>
 
             {/* Actions */}
             <div className="flex gap-4 pt-4 border-t border-border-primary/30">
-              <button
-                onClick={() => {
-                  toggleDone(task.id);
-                }}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold transition-all ${
-                  task.done
-                    ? "bg-accent-primary/10 text-accent-primary border border-accent-primary/20"
-                    : "bg-accent-primary text-bg-primary hover:bg-accent-primary/90"
-                }`}
-              >
-                {task.done ? (
-                  <CheckCircle size={20} />
-                ) : (
-                  <Circle size={20} />
-                )}
+              {isEditing ? (
+                <>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="flex-1 py-4 rounded-2xl font-bold bg-bg-secondary text-text-primary hover:bg-bg-secondary/80 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold bg-accent-primary text-bg-primary hover:bg-accent-primary/90 transition-all shadow-lg shadow-accent-primary/20"
+                  >
+                    <Save size={20} />
+                    Save Changes
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      toggleDone(task.id);
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold transition-all ${
+                      task.done
+                        ? "bg-accent-primary/10 text-accent-primary border border-accent-primary/20"
+                        : "bg-accent-primary text-bg-primary hover:bg-accent-primary/90"
+                    }`}
+                  >
+                    {task.done ? (
+                      <CheckCircle size={20} />
+                    ) : (
+                      <Circle size={20} />
+                    )}
 
-                {task.done ? "Mark as Pending" : "Mark as Completed"}
-              </button>
+                    {task.done ? "Mark as Pending" : "Mark as Completed"}
+                  </button>
 
-              {isOwner && (
-                <button
-                  onClick={() => {
-                    onDelete(task.id);
-                    onClose();
-                  }}
-                  className="p-4 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all"
-                  title="Delete Task"
-                >
-                  <Trash2 size={20} />
-                </button>
+                  {isOwner && (
+                    <button
+                      onClick={() => {
+                        onDelete(task.id);
+                        onClose();
+                      }}
+                      className="p-4 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all"
+                      title="Delete Task"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>

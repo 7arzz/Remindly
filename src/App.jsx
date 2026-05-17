@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { 
   BarChart3, Trash2, ListTodo, LogIn, LogOut, 
-  User as UserIcon, Globe, FileText, CheckCircle2 
+  Globe, FileText, CheckCircle2 
 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -15,9 +15,10 @@ import Detail from "./components/Detail";
 import SummarySection from "./components/SummarySection";
 import AddRoadmap from "./components/AddRoadmap";
 import RoadmapCard from "./components/RoadmapCard";
+import NotificationPermissionBanner from "./components/NotificationPermissionBanner";
 import { supabase, loginWithGoogle, logout } from "./supabase";
 import { toast } from "sonner";
-import { requestForToken, onMessageListener } from "./firebase";
+import { useNotifications } from "./hooks/useNotifications";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -61,82 +62,14 @@ function App() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
-  // Notification Permission & Reminder Logic
-  useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-    
-    // Listen for foreground messages
-    onMessageListener().then((payload) => {
-      console.log("Message received in foreground:", payload);
-      toast.info(payload.notification.title, {
-        description: payload.notification.body
-      });
-    }).catch((err) => console.log("Failed to receive foreground message: ", err));
-  }, []);
-
-  // Save FCM Token to Supabase
-  const saveFcmToken = useCallback(async (token) => {
-    if (!user || !token) return;
-    try {
-      // Pastikan tabel 'user_push_tokens' sudah dibuat di Supabase
-      const { error } = await supabase
-        .from('user_push_tokens')
-        .upsert({ 
-          user_id: user.id, 
-          fcm_token: token,
-        }, { onConflict: 'user_id' });
-      
-      if (error) {
-        console.warn("Table 'user_push_tokens' might not exist yet. Please create it in Supabase SQL Editor.");
-        throw error;
-      }
-      console.log("FCM Token saved to Supabase");
-    } catch (error) {
-      console.error("Error saving FCM token:", error);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      requestForToken().then(token => {
-        if (token) saveFcmToken(token);
-      });
-    }
-  }, [user, saveFcmToken]);
-
-  useEffect(() => {
-    const notifiedTasks = new Set();
-
-    const checkReminders = () => {
-      const now = new Date();
-      tasks.forEach(task => {
-        if (task.done || !task.reminder_offset || task.reminder_offset <= 0 || notifiedTasks.has(task.id)) {
-          return;
-        }
-
-        const deadline = new Date(task.time);
-        const reminderTime = new Date(deadline.getTime() - task.reminder_offset * 60000);
-
-        if (now >= reminderTime && now < deadline) {
-          if (Notification.permission === "granted") {
-            new Notification("Task Reminder: " + task.text, {
-              body: `Deadline is approaching (${new Date(task.time).toLocaleString()})`,
-              icon: "/bell.jpg"
-            });
-            notifiedTasks.add(task.id);
-            toast.info(`Reminder: ${task.text} is due soon!`);
-          }
-        }
-      });
-    };
-
-    const interval = setInterval(checkReminders, 30000); // Check every 30 seconds
-    checkReminders(); // Initial check
-
-    return () => clearInterval(interval);
-  }, [tasks]);
+  // ─── Push Notification hook ─────────────────────────────────────────────
+  const {
+    permission: notifPermission,
+    tokenLoading,
+    tokenError,
+    support: notifSupport,
+    requestPermission: requestNotifPermission,
+  } = useNotifications(user, tasks);
 
   // Supabase Sync - Real-time Tasks
   useEffect(() => {
@@ -656,6 +589,15 @@ function App() {
           </div>
         </header>
 
+        {/* Notification Permission Banner */}
+        <NotificationPermissionBanner
+          permission={notifPermission}
+          tokenLoading={tokenLoading}
+          tokenError={tokenError}
+          supported={notifSupport.fcm}
+          onEnable={requestNotifPermission}
+        />
+
         {/* Scrollable Content */}
         <div className="scroll-area no-scrollbar">
           <div className="max-w-5xl mx-auto w-full">
@@ -777,6 +719,7 @@ function App() {
             onClose={() => setSelectedTaskId(null)}
             onDelete={deleteTask}
             toggleDone={toggleDone}
+            onUpdate={updateTask}
             currentUser={user}
           />
         )}

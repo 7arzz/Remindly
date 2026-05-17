@@ -16,8 +16,10 @@ export const messaging = getMessaging(app);
 
 export const requestForToken = async () => {
   try {
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     const currentToken = await getToken(messaging, {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY, // Dapatkan dari Firebase Console -> Messaging -> Web Push certificates
+      serviceWorkerRegistration: registration
     });
     if (currentToken) {
       console.log("FCM Token:", currentToken);
