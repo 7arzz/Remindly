@@ -1,7 +1,16 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { 
-  BarChart3, Trash2, ListTodo, LogIn, LogOut, 
-  Globe, FileText, CheckCircle2, HelpCircle, Menu, X
+import { useState, useEffect, useCallback } from "react";
+import {
+  BarChart3,
+  Trash2,
+  ListTodo,
+  LogIn,
+  LogOut,
+  Globe,
+  FileText,
+  CheckCircle2,
+  HelpCircle,
+  Menu,
+  X,
 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -40,50 +49,57 @@ function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Spotlight Tutorial Configuration
-  const tutorialSteps = useMemo(() => [
+  const tutorialSteps = [
     {
       targetId: "nav-tasks",
       title: "Daftar Tugas Premium",
-      description: "Kelola daftar tugas harian Anda di sini. Dilengkapi sinkronisasi real-time dengan Supabase database.",
+      description:
+        "Kelola daftar tugas harian Anda di sini. Dilengkapi sinkronisasi real-time dengan Supabase database.",
       position: "right",
     },
     {
       targetId: "task-input-container",
       title: "Tambah Tugas Baru",
-      description: "Gunakan form ini untuk membuat tugas baru. Masukkan detail tugas, tentukan prioritas, atur deadline, unggah gambar pendukung, dan setel AI reminder offset.",
+      description:
+        "Gunakan form ini untuk membuat tugas baru. Masukkan detail tugas, tentukan prioritas, atur deadline, unggah gambar pendukung, dan setel AI reminder offset.",
       position: "bottom",
     },
     {
       targetId: "progress-bar-container",
       title: "Progress Tracker",
-      description: "Pantau kemajuan Anda secara visual. Progress bar ini akan terisi otomatis saat Anda menandai tugas sebagai selesai.",
+      description:
+        "Pantau kemajuan Anda secara visual. Progress bar ini akan terisi otomatis saat Anda menandai tugas sebagai selesai.",
       position: "bottom",
     },
     {
       targetId: "nav-summaries",
       title: "Knowledge Hub",
-      description: "Punya foto catatan, dokumen tugas, atau papan tulis? Unggah di sini dan biarkan Gemini AI merangkum isi foto tersebut menjadi catatan digital secara cerdas.",
+      description:
+        "Punya foto catatan, dokumen tugas, atau papan tulis? Unggah di sini dan biarkan Gemini AI merangkum isi foto tersebut menjadi catatan digital secara cerdas.",
       position: "right",
     },
     {
       targetId: "summary-section",
       title: "Ringkasan AI",
-      description: "Lihat semua rangkasan dan catatan Anda yang dihasilkan AI pada panel ini. Anda dapat menambah, mengedit, atau menghapus rangkasan.",
+      description:
+        "Lihat semua rangkasan dan catatan Anda yang dihasilkan AI pada panel ini. Anda dapat menambah, mengedit, atau menghapus rangkasan.",
       position: "right",
     },
     {
       targetId: "btn-stats",
       title: "Analitik & Grafik AI",
-      description: "Analisis performa penyelesaian tugas Anda lewat visualisasi statistik interaktif di panel ini.",
+      description:
+        "Analisis performa penyelesaian tugas Anda lewat visualisasi statistik interaktif di panel ini.",
       position: "bottom",
     },
     {
       targetId: "roadmap-section",
       title: "Roadmap Strategis",
-      description: "Kelola rencana jangka panjang Anda dengan menambahkan, mengedit, dan menandai langkah-langkah penting.",
+      description:
+        "Kelola rencana jangka panjang Anda dengan menambahkan, mengedit, dan menandai langkah-langkah penting.",
       position: "right",
     },
-  ], []);
+  ];
 
   const {
     isActive: isTutorialActive,
@@ -109,12 +125,9 @@ function App() {
 
   // Auth Listener
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -152,10 +165,10 @@ function App() {
     // Initial fetch
     const fetchTasks = async () => {
       const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
+        .from("tasks")
+        .select("*")
+        .order("created_at", { ascending: false });
+
       if (error) console.error("Error fetching tasks:", error);
       else setTasks(data || []);
     };
@@ -164,16 +177,22 @@ function App() {
 
     // Subscribe to changes
     const channel = supabase
-      .channel('tasks_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setTasks(prev => [payload.new, ...prev]);
-        } else if (payload.eventType === 'UPDATE') {
-          setTasks(prev => prev.map(t => t.id === payload.new.id ? payload.new : t));
-        } else if (payload.eventType === 'DELETE') {
-          setTasks(prev => prev.filter(t => t.id !== payload.old.id));
-        }
-      })
+      .channel("tasks_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setTasks((prev) => [payload.new, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            setTasks((prev) =>
+              prev.map((t) => (t.id === payload.new.id ? payload.new : t)),
+            );
+          } else if (payload.eventType === "DELETE") {
+            setTasks((prev) => prev.filter((t) => t.id !== payload.old.id));
+          }
+        },
+      )
       .subscribe();
 
     return () => {
@@ -190,10 +209,10 @@ function App() {
 
     const fetchRoadmaps = async () => {
       const { data, error } = await supabase
-        .from('roadmaps')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
+        .from("roadmaps")
+        .select("*")
+        .order("created_at", { ascending: false });
+
       if (error) console.error("Error fetching roadmaps:", error);
       else setRoadmaps(data || []);
     };
@@ -201,16 +220,22 @@ function App() {
     fetchRoadmaps();
 
     const channel = supabase
-      .channel('roadmaps_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'roadmaps' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setRoadmaps(prev => [payload.new, ...prev]);
-        } else if (payload.eventType === 'UPDATE') {
-          setRoadmaps(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
-        } else if (payload.eventType === 'DELETE') {
-          setRoadmaps(prev => prev.filter(r => r.id !== payload.old.id));
-        }
-      })
+      .channel("roadmaps_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "roadmaps" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setRoadmaps((prev) => [payload.new, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            setRoadmaps((prev) =>
+              prev.map((r) => (r.id === payload.new.id ? payload.new : r)),
+            );
+          } else if (payload.eventType === "DELETE") {
+            setRoadmaps((prev) => prev.filter((r) => r.id !== payload.old.id));
+          }
+        },
+      )
       .subscribe();
 
     return () => {
@@ -227,110 +252,117 @@ function App() {
   }, [sortBy]);
 
   // Add task
-  const addTask = useCallback(async (text, time, priority, detail, imageUrl, reminderOffset) => {
-    if (!user) return false;
-    
-    try {
-      const newTask = {
-        user_id: user.id,
-        user_name: user.user_metadata?.full_name || user.email.split('@')[0],
-        user_email: user.email,
-        text,
-        time,
-        priority: priority || "medium",
-        detail: detail || "",
-        done: false,
-        image_url: imageUrl || null,
-        reminder_offset: reminderOffset || 0
-      };
+  const addTask = useCallback(
+    async (text, time, priority, detail, imageUrl, reminderOffset) => {
+      if (!user) return false;
 
-      const { error } = await supabase
-        .from('tasks')
-        .insert([newTask]);
+      try {
+        const newTask = {
+          user_id: user.id,
+          user_name: user.user_metadata?.full_name || user.email.split("@")[0],
+          user_email: user.email,
+          text,
+          time,
+          priority: priority || "medium",
+          detail: detail || "",
+          done: false,
+          image_url: imageUrl || null,
+          reminder_offset: reminderOffset || 0,
+        };
 
-      if (error) throw error;
+        const { error } = await supabase.from("tasks").insert([newTask]);
 
-      confetti({
-        particleCount: 50,
-        spread: 60,
-        origin: { y: 0.8 },
-        colors: ["#64ffda", "#00bcd4", "#ffffff"],
-      });
-      return true;
-    } catch (error) {
-      console.error("Error adding task: ", error);
-      toast.error("Failed to add task. Please check your connection.");
-      return false;
-    }
-  }, [user]);
+        if (error) throw error;
 
-  // Delete task
-  const deleteTask = useCallback(async (id) => {
-    if (!user) return;
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error deleting task: ", error);
-    }
-  }, [user]);
-
-  const updateTask = useCallback(async (id, updates) => {
-    if (!user) return;
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update(updates)
-        .eq('id', id);
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error updating task: ", error);
-    }
-  }, [user]);
-
-  // Toggle Done
-  const toggleDone = useCallback(async (id) => {
-    if (!user) return;
-    const task = tasks.find(t => t.id === id);
-    if (!task) return;
-
-    const isNowDone = !task.done;
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ done: isNowDone })
-        .eq('id', id);
-      
-      if (error) throw error;
-
-      if (isNowDone) {
         confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.8 },
           colors: ["#64ffda", "#00bcd4", "#ffffff"],
         });
+        return true;
+      } catch (error) {
+        console.error("Error adding task: ", error);
+        toast.error("Failed to add task. Please check your connection.");
+        return false;
       }
-    } catch (error) {
-      console.error("Error toggling task: ", error);
-    }
-  }, [user, tasks]);
+    },
+    [user],
+  );
+
+  // Delete task
+  const deleteTask = useCallback(
+    async (id) => {
+      if (!user) return;
+      try {
+        const { error } = await supabase.from("tasks").delete().eq("id", id);
+        if (error) throw error;
+      } catch (error) {
+        console.error("Error deleting task: ", error);
+      }
+    },
+    [user],
+  );
+
+  const updateTask = useCallback(
+    async (id, updates) => {
+      if (!user) return;
+      try {
+        const { error } = await supabase
+          .from("tasks")
+          .update(updates)
+          .eq("id", id);
+        if (error) throw error;
+      } catch (error) {
+        console.error("Error updating task: ", error);
+      }
+    },
+    [user],
+  );
+
+  // Toggle Done
+  const toggleDone = useCallback(
+    async (id) => {
+      if (!user) return;
+      const task = tasks.find((t) => t.id === id);
+      if (!task) return;
+
+      const isNowDone = !task.done;
+      try {
+        const { error } = await supabase
+          .from("tasks")
+          .update({ done: isNowDone })
+          .eq("id", id);
+
+        if (error) throw error;
+
+        if (isNowDone) {
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ["#64ffda", "#00bcd4", "#ffffff"],
+          });
+        }
+      } catch (error) {
+        console.error("Error toggling task: ", error);
+      }
+    },
+    [user, tasks],
+  );
 
   // Roadmap Actions
   const addRoadmap = async (title, steps = []) => {
     if (!user) return;
     try {
-      const { error } = await supabase
-        .from('roadmaps')
-        .insert([{ 
-          title, 
-          user_id: user.id, 
+      const { error } = await supabase.from("roadmaps").insert([
+        {
+          title,
+          user_id: user.id,
           steps: steps,
-          created_at: new Date().toISOString() 
-        }]);
+          created_at: new Date().toISOString(),
+        },
+      ]);
       if (error) throw error;
       toast.success("Roadmap created successfully!");
     } catch (error) {
@@ -341,28 +373,29 @@ function App() {
 
   const deleteRoadmap = async (id) => {
     if (!user) return;
-    
+
     toast("Delete Roadmap?", {
-      description: "Are you sure you want to delete this roadmap? This action cannot be undone.",
+      description:
+        "Are you sure you want to delete this roadmap? This action cannot be undone.",
       action: {
         label: "Delete",
         onClick: async () => {
           try {
             const { error } = await supabase
-              .from('roadmaps')
+              .from("roadmaps")
               .delete()
-              .eq('id', id);
+              .eq("id", id);
             if (error) throw error;
             toast.success("Roadmap deleted.");
           } catch (error) {
             console.error("Error deleting roadmap:", error);
             toast.error("Failed to delete roadmap.");
           }
-        }
+        },
       },
       cancel: {
-        label: "Cancel"
-      }
+        label: "Cancel",
+      },
     });
   };
 
@@ -370,9 +403,9 @@ function App() {
     if (!user) return;
     try {
       const { error } = await supabase
-        .from('roadmaps')
+        .from("roadmaps")
         .update({ title })
-        .eq('id', id);
+        .eq("id", id);
       if (error) throw error;
       toast.success("Roadmap title updated.");
     } catch (error) {
@@ -383,20 +416,20 @@ function App() {
 
   const addStep = async (roadmapId, stepText) => {
     if (!user) return;
-    const roadmap = roadmaps.find(r => r.id === roadmapId);
+    const roadmap = roadmaps.find((r) => r.id === roadmapId);
     if (!roadmap) return;
 
     const newStep = {
       id: crypto.randomUUID(),
       text: stepText,
-      done: false
+      done: false,
     };
 
     try {
       const { error } = await supabase
-        .from('roadmaps')
+        .from("roadmaps")
         .update({ steps: [...roadmap.steps, newStep] })
-        .eq('id', roadmapId);
+        .eq("id", roadmapId);
       if (error) throw error;
       toast.success("Step added!");
     } catch (error) {
@@ -407,27 +440,27 @@ function App() {
 
   const toggleStep = async (roadmapId, stepId) => {
     if (!user) return;
-    const roadmap = roadmaps.find(r => r.id === roadmapId);
+    const roadmap = roadmaps.find((r) => r.id === roadmapId);
     if (!roadmap) return;
 
-    const updatedSteps = roadmap.steps.map(s => 
-      s.id === stepId ? { ...s, done: !s.done } : s
+    const updatedSteps = roadmap.steps.map((s) =>
+      s.id === stepId ? { ...s, done: !s.done } : s,
     );
 
     try {
       const { error } = await supabase
-        .from('roadmaps')
+        .from("roadmaps")
         .update({ steps: updatedSteps })
-        .eq('id', roadmapId);
+        .eq("id", roadmapId);
       if (error) throw error;
 
-      const isNowDone = updatedSteps.find(s => s.id === stepId).done;
+      const isNowDone = updatedSteps.find((s) => s.id === stepId).done;
       if (isNowDone) {
         confetti({
           particleCount: 40,
           spread: 50,
           origin: { y: 0.7 },
-          colors: ["#64ffda", "#00bcd4"]
+          colors: ["#64ffda", "#00bcd4"],
         });
       }
     } catch (error) {
@@ -437,18 +470,18 @@ function App() {
 
   const updateStep = async (roadmapId, stepId, updates) => {
     if (!user) return;
-    const roadmap = roadmaps.find(r => r.id === roadmapId);
+    const roadmap = roadmaps.find((r) => r.id === roadmapId);
     if (!roadmap) return;
 
-    const updatedSteps = roadmap.steps.map(s => 
-      s.id === stepId ? { ...s, ...updates } : s
+    const updatedSteps = roadmap.steps.map((s) =>
+      s.id === stepId ? { ...s, ...updates } : s,
     );
 
     try {
       const { error } = await supabase
-        .from('roadmaps')
+        .from("roadmaps")
         .update({ steps: updatedSteps })
-        .eq('id', roadmapId);
+        .eq("id", roadmapId);
       if (error) throw error;
       toast.success("Step updated!");
     } catch (error) {
@@ -459,16 +492,16 @@ function App() {
 
   const deleteStep = async (roadmapId, stepId) => {
     if (!user) return;
-    const roadmap = roadmaps.find(r => r.id === roadmapId);
+    const roadmap = roadmaps.find((r) => r.id === roadmapId);
     if (!roadmap) return;
 
-    const updatedSteps = roadmap.steps.filter(s => s.id !== stepId);
+    const updatedSteps = roadmap.steps.filter((s) => s.id !== stepId);
 
     try {
       const { error } = await supabase
-        .from('roadmaps')
+        .from("roadmaps")
         .update({ steps: updatedSteps })
-        .eq('id', roadmapId);
+        .eq("id", roadmapId);
       if (error) throw error;
       toast.success("Step deleted.");
     } catch (error) {
@@ -479,7 +512,7 @@ function App() {
 
   const reorderStep = async (roadmapId, fromIdx, toIdx) => {
     if (!user) return;
-    const roadmap = roadmaps.find(r => r.id === roadmapId);
+    const roadmap = roadmaps.find((r) => r.id === roadmapId);
     if (!roadmap) return;
 
     const updatedSteps = [...roadmap.steps];
@@ -488,9 +521,9 @@ function App() {
 
     try {
       const { error } = await supabase
-        .from('roadmaps')
+        .from("roadmaps")
         .update({ steps: updatedSteps })
-        .eq('id', roadmapId);
+        .eq("id", roadmapId);
       if (error) throw error;
     } catch (error) {
       console.error("Error reordering steps:", error);
@@ -499,28 +532,29 @@ function App() {
 
   const clearAll = useCallback(async () => {
     if (!user) return;
-    
+
     toast("Clear All Tasks?", {
-      description: "Are you sure you want to clear ALL PUBLIC tasks? This cannot be undone.",
+      description:
+        "Are you sure you want to clear ALL PUBLIC tasks? This cannot be undone.",
       action: {
         label: "Clear All",
         onClick: async () => {
           try {
             const { error } = await supabase
-              .from('tasks')
+              .from("tasks")
               .delete()
-              .not('id', 'is', null); // Delete all
+              .not("id", "is", null); // Delete all
             if (error) throw error;
             toast.success("All public tasks cleared.");
           } catch (error) {
             console.error("Error clearing tasks: ", error);
             toast.error("Failed to clear tasks.");
           }
-        }
+        },
       },
       cancel: {
-        label: "Cancel"
-      }
+        label: "Cancel",
+      },
     });
   }, [user]);
 
@@ -557,10 +591,13 @@ function App() {
         <div className="glass-card w-full max-w-md p-10 text-center flex flex-col gap-8">
           <div>
             <h2 className="text-2xl font-bold mb-3">Welcome to Remindly</h2>
-            <p className="text-text-secondary">Organize your tasks and summaries in a premium, <b className="text-accent-primary">collaborative</b> Sea Space.</p>
+            <p className="text-text-secondary">
+              Organize your tasks and summaries in a premium,{" "}
+              <b className="text-accent-primary">collaborative</b> Sea Space.
+            </p>
           </div>
-          <button 
-            className="btn-primary w-full shadow-xl shadow-accent-primary/10" 
+          <button
+            className="btn-primary w-full shadow-xl shadow-accent-primary/10"
             onClick={handleLogin}
           >
             <LogIn size={20} />
@@ -585,31 +622,37 @@ function App() {
         </div>
 
         <nav className="flex flex-col gap-3">
-          <button 
+          <button
             id="nav-tasks"
             onClick={() => setActiveTab("tasks")}
             className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${
-              activeTab === "tasks" ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10" : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
+              activeTab === "tasks"
+                ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10"
+                : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
             }`}
           >
             <CheckCircle2 size={20} />
             <span>Tasks</span>
           </button>
-          <button 
+          <button
             id="nav-summaries"
             onClick={() => setActiveTab("summaries")}
             className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${
-              activeTab === "summaries" ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10" : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
+              activeTab === "summaries"
+                ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10"
+                : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
             }`}
           >
             <FileText size={20} />
             <span>Summaries</span>
           </button>
-          <button 
+          <button
             id="nav-roadmap"
             onClick={() => setActiveTab("roadmap")}
             className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${
-              activeTab === "roadmap" ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10" : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
+              activeTab === "roadmap"
+                ? "bg-accent-primary text-bg-primary shadow-lg shadow-accent-primary/10"
+                : "text-text-secondary hover:bg-bg-card-hover hover:text-text-primary"
             }`}
           >
             <Globe size={20} />
@@ -623,11 +666,15 @@ function App() {
               {user.email[0].toUpperCase()}
             </div>
             <div className="flex flex-col overflow-hidden">
-              <span className="text-sm font-bold text-text-primary truncate">{user.user_metadata?.full_name || user.email.split('@')[0]}</span>
-              <span className="text-[10px] text-text-muted truncate">{user.email}</span>
+              <span className="text-sm font-bold text-text-primary truncate">
+                {user.user_metadata?.full_name || user.email.split("@")[0]}
+              </span>
+              <span className="text-[10px] text-text-muted truncate">
+                {user.email}
+              </span>
             </div>
           </div>
-          <button 
+          <button
             onClick={logout}
             className="flex items-center gap-3 px-5 py-3 text-text-muted hover:text-rose-400 transition-colors font-bold text-sm"
           >
@@ -650,7 +697,11 @@ function App() {
           {/* Desktop: page label */}
           <div className="hidden lg:block">
             <span className="text-xs font-black uppercase tracking-[0.2em] text-text-muted">
-              {activeTab === "tasks" ? "Managing Tasks" : activeTab === "summaries" ? "Knowledge Hub" : "Strategic Roadmap"}
+              {activeTab === "tasks"
+                ? "Managing Tasks"
+                : activeTab === "summaries"
+                  ? "Knowledge Hub"
+                  : "Strategic Roadmap"}
             </span>
           </div>
 
@@ -698,15 +749,23 @@ function App() {
                     {user.email[0].toUpperCase()}
                   </div>
                   <div className="flex flex-col overflow-hidden">
-                    <span className="text-sm font-bold text-text-primary truncate">{user.user_metadata?.full_name || user.email.split('@')[0]}</span>
-                    <span className="text-[10px] text-text-muted truncate">{user.email}</span>
+                    <span className="text-sm font-bold text-text-primary truncate">
+                      {user.user_metadata?.full_name ||
+                        user.email.split("@")[0]}
+                    </span>
+                    <span className="text-[10px] text-text-muted truncate">
+                      {user.email}
+                    </span>
                   </div>
                 </div>
 
                 {/* Menu items */}
                 <button
                   className="mobile-menu-item"
-                  onClick={() => { restartTutorial(); setIsMenuOpen(false); }}
+                  onClick={() => {
+                    restartTutorial();
+                    setIsMenuOpen(false);
+                  }}
                 >
                   <HelpCircle size={18} />
                   <span>Guided Tour</span>
@@ -714,14 +773,20 @@ function App() {
                 <button
                   id="btn-stats"
                   className="mobile-menu-item"
-                  onClick={() => { setIsStatsOpen(true); setIsMenuOpen(false); }}
+                  onClick={() => {
+                    setIsStatsOpen(true);
+                    setIsMenuOpen(false);
+                  }}
                 >
                   <BarChart3 size={18} />
                   <span>Analytics</span>
                 </button>
                 <button
                   className="mobile-menu-item mobile-menu-item--danger"
-                  onClick={() => { logout(); setIsMenuOpen(false); }}
+                  onClick={() => {
+                    logout();
+                    setIsMenuOpen(false);
+                  }}
                 >
                   <LogOut size={18} />
                   <span>Sign Out</span>
@@ -748,7 +813,10 @@ function App() {
                 <div id="progress-bar-container">
                   <ProgressBar tasks={tasks} />
                 </div>
-                <div id="task-input-container" className="glass-card overflow-hidden">
+                <div
+                  id="task-input-container"
+                  className="glass-card overflow-hidden"
+                >
                   <TaskInput addTask={addTask} />
                 </div>
                 <div id="filter-controls-container">
@@ -762,8 +830,13 @@ function App() {
                   />
                 </div>
                 <div className="flex justify-between items-center px-2">
-                  <h2 className="text-2xl font-black text-text-primary tracking-tight">Tasks</h2>
-                  <button className="icon-btn text-text-muted hover:text-red-400" onClick={clearAll}>
+                  <h2 className="text-2xl font-black text-text-primary tracking-tight">
+                    Tasks
+                  </h2>
+                  <button
+                    className="icon-btn text-text-muted hover:text-red-400"
+                    onClick={clearAll}
+                  >
                     <Trash2 size={20} />
                   </button>
                 </div>
@@ -787,12 +860,16 @@ function App() {
               <div id="roadmap-section" className="roadmap-container fadeIn">
                 <div className="roadmap-header-content">
                   <div>
-                    <h2 className="text-3xl font-black text-text-primary tracking-tight">Goal Roadmap</h2>
-                    <p className="text-text-secondary text-sm">Plan your long-term success with AI steps.</p>
+                    <h2 className="text-3xl font-black text-text-primary tracking-tight">
+                      Goal Roadmap
+                    </h2>
+                    <p className="text-text-secondary text-sm">
+                      Plan your long-term success with AI steps.
+                    </p>
                   </div>
                   <AddRoadmap onAdd={addRoadmap} />
                 </div>
-                
+
                 <div className="flex flex-col gap-8">
                   {roadmaps.length === 0 ? (
                     <div className="glass-card p-16 text-center flex flex-col items-center gap-4">
@@ -826,29 +903,35 @@ function App() {
 
         {/* Mobile Navigation */}
         <nav className="mobile-nav">
-          <button 
+          <button
             id="mobile-nav-tasks"
             onClick={() => setActiveTab("tasks")}
             className={`nav-item-mobile ${activeTab === "tasks" ? "active" : ""}`}
           >
             <CheckCircle2 size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Tasks</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">
+              Tasks
+            </span>
           </button>
-          <button 
+          <button
             id="mobile-nav-summaries"
             onClick={() => setActiveTab("summaries")}
             className={`nav-item-mobile ${activeTab === "summaries" ? "active" : ""}`}
           >
             <FileText size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Knowledge</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">
+              Knowledge
+            </span>
           </button>
-          <button 
+          <button
             id="mobile-nav-roadmap"
             onClick={() => setActiveTab("roadmap")}
             className={`nav-item-mobile ${activeTab === "roadmap" ? "active" : ""}`}
           >
             <Globe size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Roadmap</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">
+              Roadmap
+            </span>
           </button>
         </nav>
       </main>

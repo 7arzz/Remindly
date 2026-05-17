@@ -35,16 +35,16 @@ export function useTutorial(steps) {
   }, []);
 
   const goNext = useCallback(() => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep((s) => s + 1);
-    } else {
+    setCurrentStep((s) => {
+      if (s < steps.length - 1) return s + 1;
       finish();
-    }
-  }, [currentStep, steps.length, finish]);
+      return s;
+    });
+  }, [steps.length, finish]);
 
   const goPrev = useCallback(() => {
-    if (currentStep > 0) setCurrentStep((s) => s - 1);
-  }, [currentStep]);
+    setCurrentStep((s) => (s > 0 ? s - 1 : s));
+  }, []);
 
   const skip = useCallback(() => {
     finish();

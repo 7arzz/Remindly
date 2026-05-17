@@ -100,13 +100,13 @@ export const useNotifications = (user, tasks = []) => {
 
   // ─── Auto-request permission once user is signed in ──────────────────────
   useEffect(() => {
-    if (!user || !support.fcm) return;
+    if (!user?.id || !support.fcm) return;
     if (Notification.permission === "granted") {
       // Already granted — silently refresh the token
       requestPermission();
     }
     // If "default", the NotificationPermissionBanner UI will prompt the user
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id, support.fcm, requestPermission]);
 
   // ─── Foreground message handler ───────────────────────────────────────────
   // Fires when a push arrives while the tab IS open (SW skips in this case)
@@ -138,13 +138,14 @@ export const useNotifications = (user, tasks = []) => {
   // This runs while the tab is OPEN as a secondary safety net.
   // The Edge Function handles background delivery.
   // It mirrors the same threshold logic so the user gets notified either way.
-  useEffect(() => {
-    if (!tasks.length) return;
+  const tasksRef = useRef(tasks);
+  useEffect(() => { tasksRef.current = tasks; }, [tasks]);
 
+  useEffect(() => {
     const checkDeadlines = () => {
       const now = Date.now();
 
-      tasks.forEach((task) => {
+      tasksRef.current.forEach((task) => {
         if (task.done || !task.time) return;
 
         const deadlineMs = new Date(task.time).getTime();
@@ -192,7 +193,7 @@ export const useNotifications = (user, tasks = []) => {
     checkDeadlines(); // run immediately on mount / task change
 
     return () => clearInterval(interval);
-  }, [tasks]);
+  }, []);
 
   return {
     permission,
