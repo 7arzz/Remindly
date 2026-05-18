@@ -8,6 +8,8 @@ export default function SummaryChatModal({ summary, isOpen, onClose }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [imageContext, setImageContext] = useState(null);
+  const [isImageLoading, setIsImageLoading] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -15,6 +17,30 @@ export default function SummaryChatModal({ summary, isOpen, onClose }) {
       setMessages([
         { role: 'ai', text: `Halo! Saya AI asisten kamu. Ada yang ingin ditanyakan tentang catatan "${summary.title}" ini?` }
       ]);
+
+      // Fetch summary image and convert to base64 for Gemini context
+      if (summary.image_url) {
+        setIsImageLoading(true);
+        fetch(summary.image_url)
+          .then(res => res.blob())
+          .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              setImageContext({
+                data: reader.result.split(',')[1],
+                mimeType: blob.type || 'image/jpeg'
+              });
+              setIsImageLoading(false);
+            };
+            reader.readAsDataURL(blob);
+          })
+          .catch(err => {
+            console.error("Failed to load summary image for AI context:", err);
+            setIsImageLoading(false);
+          });
+      } else {
+        setImageContext(null);
+      }
     }
   }, [isOpen, summary]);
 
@@ -37,15 +63,25 @@ export default function SummaryChatModal({ summary, isOpen, onClose }) {
       const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
+      const parts = [{ text: `Konteks Catatan saya: ${summary.content}` }];
+      if (imageContext) {
+        parts.push({
+          inlineData: {
+            data: imageContext.data,
+            mimeType: imageContext.mimeType
+          }
+        });
+      }
+
       const chat = model.startChat({
         history: [
           {
             role: "user",
-            parts: [{ text: `Konteks Catatan saya: ${summary.content}` }],
+            parts: parts,
           },
           {
             role: "model",
-            parts: [{ text: "Baik, saya sudah memahami konteks catatan Anda. Silakan tanyakan apa saja terkait catatan tersebut." }],
+            parts: [{ text: "Baik, saya sudah memahami konteks catatan dan gambar Anda. Silakan tanyakan apa saja terkait catatan tersebut." }],
           },
         ],
       });
@@ -81,7 +117,19 @@ export default function SummaryChatModal({ summary, isOpen, onClose }) {
                   </div>
                   <div>
                     <h2 className="text-sm font-black uppercase tracking-widest text-text-primary">Chat with AI</h2>
-                    <p className="text-[10px] text-text-muted font-bold tracking-tight truncate max-w-[200px]">Re: {summary.title}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <p className="text-[10px] text-text-muted font-bold tracking-tight truncate max-w-[120px]">Re: {summary.title}</p>
+                      {isImageLoading ? (
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                          <Loader2 size={8} className="animate-spin" />
+                          Image Loading
+                        </span>
+                      ) : imageContext ? (
+                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                          Image Active
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
                 <button onClick={onClose} className="p-2 rounded-xl text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all">
