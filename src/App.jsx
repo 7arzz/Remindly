@@ -47,6 +47,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [selectedDetailTaskId, setSelectedDetailTaskId] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // eslint-disable-next-line no-unused-vars
   const [showDebug, setShowDebug] = useState(false);
@@ -1004,7 +1005,8 @@ function App() {
                   sortBy={sortBy}
                   searchQuery={searchQuery}
                   currentUser={user}
-                  onTaskClick={(task) => setSelectedTaskId(task.id)}
+                  onTaskClick={(task) => setSelectedDetailTaskId(task.id)}
+                  onEditTaskClick={(task) => setSelectedTaskId(task.id)}
                 />
               </div>
             ) : activeTab === "summaries" ? (
@@ -1108,6 +1110,21 @@ function App() {
             toggleDone={toggleDone}
             onUpdate={updateTask}
             currentUser={user}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedDetailTaskId && (
+          <Detail
+            task={tasks.find((t) => String(t.id) === String(selectedDetailTaskId))}
+            onClose={() => setSelectedDetailTaskId(null)}
+            updateTask={updateTask}
+            currentUser={user}
+            onDelete={() => {
+              deleteTask(selectedDetailTaskId);
+              setSelectedDetailTaskId(null);
+            }}
           />
         )}
       </AnimatePresence>

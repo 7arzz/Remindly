@@ -2,7 +2,7 @@ import { motion as Motion } from "framer-motion";
 import { Trash2, CheckCircle, Circle, Clock, MessageSquare, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
-function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick }) {
+function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick, onEditClick }) {
   const isOwner = currentUser && task.user_email === currentUser.email;
   const isExpired = !task.done && new Date(task.time).getTime() <= new Date().getTime();
 
@@ -78,7 +78,7 @@ function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick }) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onClick(); // Trigger edit modal
+                  onEditClick(); // Trigger edit modal
                 }}
                 className="p-1.5 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                 title="Edit Task"

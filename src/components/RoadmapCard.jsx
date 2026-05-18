@@ -19,8 +19,13 @@ export default function RoadmapCard({
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState(roadmap.title);
   const [stepInput, setStepInput] = useState("");
-  const [selectedStep, setSelectedStep] = useState(null);
+  const [selectedStepId, setSelectedStepId] = useState(null);
   const [isStepModalOpen, setIsStepModalOpen] = useState(false);
+
+  const selectedStep = useMemo(() => {
+    return roadmap.steps.find((s) => s.id === selectedStepId) || null;
+  }, [roadmap.steps, selectedStepId]);
+
 
   const {
     done,
@@ -158,7 +163,7 @@ export default function RoadmapCard({
                     onToggle={() => onToggleStep(roadmap.id, step.id)}
                     onDelete={() => onDeleteStep(roadmap.id, step.id)}
                     onStepClick={() => {
-                      setSelectedStep(step);
+                      setSelectedStepId(step.id);
                       setIsStepModalOpen(true);
                     }}
                     onMoveLeft={
@@ -179,14 +184,19 @@ export default function RoadmapCard({
         )}
       </div>
 
-      <StepModal
-        isOpen={isStepModalOpen}
-        onClose={() => setIsStepModalOpen(false)}
-        step={selectedStep || {}}
-        roadmapTitle={roadmap.title}
-        onToggle={() => onToggleStep(roadmap.id, selectedStep.id)}
-        onUpdateDetail={(newDetail) => onUpdateStep(roadmap.id, selectedStep.id, { detail: newDetail })}
-      />
+      {isStepModalOpen && selectedStep && (
+        <StepModal
+          isOpen={isStepModalOpen}
+          onClose={() => {
+            setIsStepModalOpen(false);
+            setSelectedStepId(null);
+          }}
+          step={selectedStep}
+          roadmapTitle={roadmap.title}
+          onToggle={() => onToggleStep(roadmap.id, selectedStep.id)}
+          onUpdateDetail={(newDetail) => onUpdateStep(roadmap.id, selectedStep.id, { detail: newDetail })}
+        />
+      )}
 
       {/* Add step form */}
       <form className="add-step-form" onSubmit={handleAddStep}>
