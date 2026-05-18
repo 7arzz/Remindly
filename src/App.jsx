@@ -90,13 +90,22 @@ function App() {
       position: "right",
     },
     {
-      targetId: window.innerWidth < 768 ? "mobile-nav-stats-hint" : "btn-stats",
-      title: "Analitik & Grafik AI",
-      description:
-        "Analisis performa penyelesaian tugas Anda lewat visualisasi statistik interaktif di panel ini.",
+      targetId: window.innerWidth < 1024 ? "mobile-hamburger-btn" : "btn-stats",
+      title: window.innerWidth < 1024 ? "Menu Fitur Tambahan" : "Analitik & Grafik AI",
+      description: window.innerWidth < 1024
+        ? "Ketuk tombol menu ☰ ini untuk mengakses visualisasi grafik statistik AI, mengulang Guided Tour, mengubah tema, atau keluar dari akun Anda."
+        : "Analisis performa penyelesaian tugas Anda lewat visualisasi statistik interaktif di panel ini.",
       position: "bottom",
-      onEnter: () => setIsMenuOpen(true),
-      onLeave: () => setIsMenuOpen(false),
+      onEnter: () => {
+        if (window.innerWidth >= 1024) {
+          setIsMenuOpen(true);
+        }
+      },
+      onLeave: () => {
+        if (window.innerWidth >= 1024) {
+          setIsMenuOpen(false);
+        }
+      },
     },
     {
       targetId: "roadmap-section",
@@ -865,6 +874,7 @@ function App() {
 
           {/* Mobile: Hamburger button */}
           <button
+            id="mobile-hamburger-btn"
             className="lg:hidden p-2.5 rounded-xl bg-bg-secondary/60 border border-border-primary/40 text-text-secondary hover:text-accent-primary hover:border-accent-primary/30 transition-all"
             onClick={() => setIsMenuOpen((v) => !v)}
             aria-label="Toggle menu"
