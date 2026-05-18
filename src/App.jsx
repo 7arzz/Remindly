@@ -604,7 +604,7 @@ function App() {
             <div className="bg-accent-primary p-4 rounded-2xl shadow-lg shadow-accent-primary/20">
               <ListTodo size={40} className="text-bg-primary" />
             </div>
-            <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-accent-primary tracking-tight">
+            <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[var(--text-primary)] to-[var(--accent-primary)] tracking-tight">
               Remindly
             </h1>
           </div>
@@ -691,7 +691,7 @@ function App() {
           <div className="bg-accent-primary p-3 rounded-xl shadow-lg shadow-accent-primary/20">
             <ListTodo size={24} className="text-bg-primary" />
           </div>
-          <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-accent-primary">
+          <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--text-primary)] to-[var(--accent-primary)]">
             Remindly
           </h1>
         </div>
@@ -833,7 +833,9 @@ function App() {
           {/* Mobile: Logo */}
           <div className="lg:hidden flex items-center gap-3">
             <ListTodo size={24} className="text-accent-primary" />
-            <span className="font-black text-lg tracking-tight">Remindly</span>
+            <span className="font-black text-lg tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--text-primary)] to-[var(--accent-primary)]">
+              Remindly
+            </span>
           </div>
 
           {/* Desktop: page label */}
