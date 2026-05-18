@@ -1,126 +1,204 @@
 /**
  * supabase/functions/send-reminders/index.ts
  *
- * Supabase Edge Function: Background Push Notification Dispatcher
+ * Background push dispatcher (Supabase Edge / Deno).
  *
- * Flow:
- *  1. Fetch tasks that are incomplete, have a deadline, and haven't been fully notified
- *  2. For each threshold (2h / 30m / 5m) check if the reminder window has arrived
- *  3. Fetch the user's FCM token from user_notification_tokens
- *  4. Send push via Firebase FCM HTTP v1 API (using OAuth2 service account)
- *  5. Mark the threshold as notified to prevent duplicates
+ * Trigger: pg_cron → POST with service-role key
  *
- * Trigger: Supabase Cron (pg_cron) every minute — see README
- * Auth: Called with service-role key (bypasses RLS), safe for server-side only
+ * Design:
+ *  - Distributed lock (function_locks + stale recovery)
+ *  - Atomic per-threshold claim (idempotent, concurrency-safe)
+ *  - Batched reads, paginated task scan
+ *  - FCM HTTP v1 with OAuth2 + exponential backoff retries
+ *  - UTC-safe deadline math; display TZ explicit for body text
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2";
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+
+const LOCK_NAME = "send-reminders";
+const LOCK_STALE_MS = 10 * 60 * 1000; // recover crashed workers after 10m
+
+const TASK_PAGE_SIZE = 200;
+const MAX_TASK_PAGES = 10; // up to 2_000 candidates per run
+
+/** Only tasks with deadline in [now - LOOKBACK, now + LOOKAHEAD] */
+const LOOKBACK_MS = 3 * 60 * 60 * 1000;
+const LOOKAHEAD_MS = 2 * 60 * 60 * 1000 + 60_000;
+
+/** Fire window: [fireAt, fireAt + WINDOW] — cron every 1m, 15m tolerance */
+const FIRE_WINDOW_MS = 15 * 60 * 1000;
+
+const DISPLAY_TZ = "Asia/Jakarta";
+
+const FCM_MAX_RETRIES = 2; // 2 retries → 3 total attempts
+const FCM_BACKOFF_BASE_MS = 500;
+
+const THRESHOLDS = [
+  { minutes: 120, label: "2 hours", field: "notified_2h" as const },
+  { minutes: 30, label: "30 minutes", field: "notified_30m" as const },
+  { minutes: 5, label: "5 minutes", field: "notified_5m" as const },
+] as const;
+
+type ThresholdField = (typeof THRESHOLDS)[number]["field"];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Task {
+interface TaskRow {
   id: string;
   user_id: string;
   text: string;
-  time: string;           // ISO timestamp — the deadline
+  time: string; // timestamptz ISO from DB
   done: boolean;
-  reminder_offset: number; // legacy single-offset field (kept for compat)
   notified_2h: boolean;
   notified_30m: boolean;
   notified_5m: boolean;
 }
 
-interface NotificationToken {
-  user_id: string;
-  fcm_token: string;
-}
-
 interface NotificationResult {
   task_id: string;
-  task_text: string;
-  threshold: string;
+  threshold: ThresholdField;
   user_id: string;
-  status: "sent" | "skipped" | "no_token" | "fcm_error" | "db_error";
+  status:
+    | "sent"
+    | "skipped"
+    | "no_token"
+    | "fcm_error"
+    | "db_error"
+    | "claim_lost"
+    | "invalid_deadline";
   detail?: string;
 }
 
-interface ThresholdConfig {
-  minutes: number;
-  label: string;
-  field: "notified_2h" | "notified_30m" | "notified_5m";
+interface LogContext {
+  request_id: string;
+  [key: string]: unknown;
 }
 
-// ─── Threshold Definitions ────────────────────────────────────────────────────
+// ─── Structured logging ───────────────────────────────────────────────────────
 
-const THRESHOLDS: ThresholdConfig[] = [
-  { minutes: 120, label: "2 hours",   field: "notified_2h"  },
-  { minutes: 30,  label: "30 minutes", field: "notified_30m" },
-  { minutes: 5,   label: "5 minutes",  field: "notified_5m"  },
-];
+function log(
+  level: "info" | "warn" | "error",
+  message: string,
+  ctx: LogContext,
+): void {
+  const line = JSON.stringify({
+    ts: new Date().toISOString(),
+    level,
+    message,
+    ...ctx,
+  });
+  if (level === "error") console.error(line);
+  else if (level === "warn") console.warn(line);
+  else console.log(line);
+}
 
-// ─── FCM HTTP v1 API Helpers ──────────────────────────────────────────────────
+// ─── Time helpers (UTC-safe) ──────────────────────────────────────────────────
 
 /**
- * Generate a short-lived OAuth2 access token using a Firebase service account.
- * The service account JSON must be stored as FIREBASE_SERVICE_ACCOUNT env var.
+ * Parse DB timestamptz strictly. Accepts:
+ *  - ISO with Z or numeric offset
+ *  - Postgres style +00 / +00:00
+ * Rejects naive local strings without offset (common bug source).
  */
-async function getFcmAccessToken(): Promise<string> {
-  const serviceAccountJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
-  if (!serviceAccountJson) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT env var is not set.");
+function parseDeadlineUtc(iso: string): Date | null {
+  if (!iso || typeof iso !== "string") return null;
+
+  const trimmed = iso.trim();
+  const hasZone =
+    /[zZ]$/.test(trimmed) ||
+    /[+-]\d{2}:\d{2}$/.test(trimmed) ||
+    /[+-]\d{2}$/.test(trimmed);
+
+  if (!hasZone) {
+    return null;
   }
 
-  const sa = JSON.parse(serviceAccountJson);
-  const now = Math.floor(Date.now() / 1000);
+  const ms = Date.parse(trimmed);
+  if (!Number.isFinite(ms)) return null;
 
-  // Build JWT header + payload
+  return new Date(ms);
+}
+
+function formatDeadlineForUser(deadlineUtc: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: DISPLAY_TZ,
+  }).format(deadlineUtc);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// ─── OAuth / FCM (module cache — warm isolate reuse) ─────────────────────────
+
+let cachedAccessToken: string | null = null;
+let tokenExpiresAt = 0;
+
+async function getFcmAccessToken(requestId: string): Promise<string> {
+  const now = Date.now();
+  if (cachedAccessToken && now < tokenExpiresAt - 60_000) {
+    return cachedAccessToken;
+  }
+
+  const raw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
+  if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT is not set");
+
+  const sa = JSON.parse(raw);
+  const nowSec = Math.floor(now / 1000);
+
+  const encode = (obj: object) =>
+    btoa(JSON.stringify(obj))
+      .replace(/=/g, "")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_");
+
   const header = { alg: "RS256", typ: "JWT" };
   const payload = {
     iss: sa.client_email,
     sub: sa.client_email,
     aud: "https://oauth2.googleapis.com/token",
-    iat: now,
-    exp: now + 3600,
+    iat: nowSec,
+    exp: nowSec + 3600,
     scope: "https://www.googleapis.com/auth/firebase.messaging",
   };
 
-  const encode = (obj: object) =>
-    btoa(JSON.stringify(obj)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-
-  const headerB64  = encode(header);
-  const payloadB64 = encode(payload);
-  const unsigned   = `${headerB64}.${payloadB64}`;
-
-  // Sign with RS256 using the private key from service account
-  const privateKey = sa.private_key as string;
-  const keyData    = privateKey
+  const unsigned = `${encode(header)}.${encode(payload)}`;
+  const keyData = sa.private_key
     .replace(/-----BEGIN PRIVATE KEY-----/, "")
     .replace(/-----END PRIVATE KEY-----/, "")
     .replace(/\n/g, "");
 
   const binaryKey = Uint8Array.from(atob(keyData), (c) => c.charCodeAt(0));
-
   const cryptoKey = await crypto.subtle.importKey(
     "pkcs8",
     binaryKey,
     { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
 
-  const signatureBuffer = await crypto.subtle.sign(
+  const sig = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     cryptoKey,
-    new TextEncoder().encode(unsigned)
+    new TextEncoder().encode(unsigned),
   );
 
-  const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)))
-    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const jwt =
+    unsigned +
+    "." +
+    btoa(String.fromCharCode(...new Uint8Array(sig)))
+      .replace(/=/g, "")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_");
 
-  const jwt = `${unsigned}.${signatureB64}`;
-
-  // Exchange JWT for access token
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -129,83 +207,57 @@ async function getFcmAccessToken(): Promise<string> {
     }),
   });
 
-  if (!tokenResponse.ok) {
-    const err = await tokenResponse.text();
-    throw new Error(`Failed to get FCM access token: ${err}`);
+  const data = await res.json();
+  if (!res.ok || !data.access_token) {
+    log("error", "fcm_oauth_failed", {
+      request_id: requestId,
+      status: res.status,
+      error: data.error,
+    });
+    throw new Error(`OAuth failed: ${data.error ?? res.status}`);
   }
 
-  const tokenData = await tokenResponse.json();
-  return tokenData.access_token as string;
+  cachedAccessToken = data.access_token;
+  tokenExpiresAt = now + (data.expires_in ?? 3600) * 1000;
+  return cachedAccessToken;
 }
 
-/**
- * Send a push notification to a single FCM token via HTTP v1 API.
- * Returns { success: boolean, error?: string }
- */
-async function sendFcmNotification(
+async function sendFcmOnce(
+  projectId: string,
+  accessToken: string,
   fcmToken: string,
   title: string,
   body: string,
-  data: Record<string, string> = {},
-): Promise<{ success: boolean; error?: string }> {
-  const projectId = Deno.env.get("FIREBASE_PROJECT_ID");
-  if (!projectId) throw new Error("FIREBASE_PROJECT_ID env var is not set.");
-
-  let accessToken: string;
-  try {
-    accessToken = await getFcmAccessToken();
-  } catch (err) {
-    return { success: false, error: `Auth error: ${(err as Error).message}` };
-  }
-
-  // Enforce required fields as strings for webpush reliability
-  const safeTitle = String(title ?? "Remindly");
-  const safeBody = String(body ?? "");
-  const safeUrl = String(data?.url ?? "/");
-  const safeTag = String(data?.tag ?? data?.task_id ?? "remindly-task");
-  const safeTaskId = String(data?.task_id ?? "");
-
+  data: Record<string, string>,
+): Promise<{ ok: boolean; error?: string; unregistered?: boolean }> {
+  const safeTitle = String(title);
+  const safeBody = String(body);
   const dataPayload: Record<string, string> = {
     title: safeTitle,
     body: safeBody,
-    url: safeUrl,
-    tag: safeTag,
-    task_id: safeTaskId,
-    ...Object.fromEntries(Object.entries(data ?? {}).map(([k, v]) => [k, String(v)])),
+    url: String(data.url ?? "/"),
+    tag: String(data.tag ?? ""),
+    task_id: String(data.task_id ?? ""),
+    ...Object.fromEntries(
+      Object.entries(data).map(([k, v]) => [k, String(v)]),
+    ),
   };
 
-  // FULL payload for WEB PUSH reliability:
-  // Include notification + data + webpush + android priority high.
-  // Android requires string data fields and vibrate/priority/tag for good behavior.
   const message = {
     message: {
       token: fcmToken,
-      notification: {
-        title: safeTitle,
-        body: safeBody,
-      },
+      notification: { title: safeTitle, body: safeBody },
       data: dataPayload,
-      webpush: {
-        headers: {
-          Urgency: "high",
-        },
-      },
+      webpush: { headers: { Urgency: "high" } },
       android: {
         priority: "high",
+        notification: { tag: dataPayload.tag },
       },
     },
   };
 
-  const url = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
-
-  console.log("[send-reminders] 📦 FCM request:");
-  console.log("[send-reminders] projectId:", projectId);
-  console.log(
-    "[send-reminders] fcmToken:",
-    `${fcmToken.slice(0, 8)}…${fcmToken.slice(-6)} (len=${fcmToken.length})`,
-  );
-  console.log("[send-reminders] FCM endpoint:", url);
-  console.log("[send-reminders] FCM payload (full):", JSON.stringify(message));
+  const url =
+    `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -217,27 +269,279 @@ async function sendFcmNotification(
   });
 
   const resBody = await res.text();
-
-  console.log("[send-reminders] 🔥 Firebase response status:", res.status);
-  // Log full body for audit
-  console.log("[send-reminders] 🔥 Firebase response body:", resBody);
-
   if (!res.ok) {
-    if (res.status === 404 || resBody.includes("UNREGISTERED")) {
-      return { success: false, error: "UNREGISTERED" };
-    }
-    return { success: false, error: `FCM ${res.status}: ${resBody}` };
+    const unregistered =
+      res.status === 404 ||
+      resBody.includes("UNREGISTERED") ||
+      resBody.includes("NOT_FOUND");
+    return {
+      ok: false,
+      error: `FCM ${res.status}: ${resBody.slice(0, 500)}`,
+      unregistered,
+    };
   }
-
-  return { success: true };
+  return { ok: true };
 }
 
-// ─── Main Handler ─────────────────────────────────────────────────────────────
+/** Exponential backoff: 500ms, 1500ms (max 2 retries) */
+async function sendFcmWithRetry(
+  requestId: string,
+  fcmToken: string,
+  title: string,
+  body: string,
+  data: Record<string, string>,
+  ctx: LogContext,
+): Promise<{ ok: boolean; error?: string; unregistered?: boolean }> {
+  const projectId = Deno.env.get("FIREBASE_PROJECT_ID");
+  if (!projectId) {
+    return { ok: false, error: "FIREBASE_PROJECT_ID is not set" };
+  }
+
+  let accessToken: string;
+  try {
+    accessToken = await getFcmAccessToken(requestId);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+
+  let lastError = "unknown";
+  for (let attempt = 0; attempt <= FCM_MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      const delay = FCM_BACKOFF_BASE_MS * Math.pow(3, attempt - 1);
+      log("warn", "fcm_retry", { ...ctx, attempt, delay_ms: delay });
+      await sleep(delay);
+    }
+
+    const result = await sendFcmOnce(
+      projectId,
+      accessToken,
+      fcmToken,
+      title,
+      body,
+      data,
+    );
+
+    if (result.ok) return result;
+
+    lastError = result.error ?? "FCM error";
+    if (result.unregistered) return result; // don't retry dead tokens
+
+    const retryable =
+      lastError.includes("429") ||
+      lastError.includes("500") ||
+      lastError.includes("503") ||
+      lastError.includes("UNAVAILABLE") ||
+      lastError.includes("INTERNAL");
+
+    if (!retryable || attempt === FCM_MAX_RETRIES) {
+      return { ok: false, error: lastError, unregistered: result.unregistered };
+    }
+  }
+
+  return { ok: false, error: lastError };
+}
+
+// ─── Distributed lock ─────────────────────────────────────────────────────────
+
+async function acquireLock(
+  supabase: SupabaseClient,
+  requestId: string,
+): Promise<boolean> {
+  const nowIso = new Date().toISOString();
+  const staleBefore = new Date(Date.now() - LOCK_STALE_MS).toISOString();
+
+  // 1) Recover stale lock (crashed worker)
+  await supabase
+    .from("function_locks")
+    .update({ locked: false, updated_at: nowIso })
+    .eq("name", LOCK_NAME)
+    .eq("locked", true)
+    .lt("updated_at", staleBefore);
+
+  // 2) Try atomic acquire: only if currently unlocked
+  const { data: acquired, error } = await supabase
+    .from("function_locks")
+    .update({ locked: true, updated_at: nowIso })
+    .eq("name", LOCK_NAME)
+    .eq("locked", false)
+    .select("name");
+
+  if (error) {
+    log("error", "lock_acquire_error", { request_id: requestId, error });
+    return false;
+  }
+  if (acquired && acquired.length > 0) return true;
+
+  // 3) Bootstrap row on first deploy
+  const { error: insertErr } = await supabase.from("function_locks").insert({
+    name: LOCK_NAME,
+    locked: true,
+    updated_at: nowIso,
+  });
+
+  if (!insertErr) return true;
+
+  // Another instance won the race
+  return false;
+}
+
+async function releaseLock(
+  supabase: SupabaseClient,
+  requestId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("function_locks")
+    .update({ locked: false, updated_at: new Date().toISOString() })
+    .eq("name", LOCK_NAME);
+
+  if (error) {
+    log("error", "lock_release_error", { request_id: requestId, error });
+  }
+}
+
+// ─── Idempotent claim (core dedup primitive) ───────────────────────────────────
+
+/**
+ * Atomically mark threshold as notified. Returns true iff this worker won the race.
+ * Uses UPDATE … WHERE notified_* = false — safe under concurrent cron overlap.
+ */
+async function claimThreshold(
+  supabase: SupabaseClient,
+  taskId: string,
+  field: ThresholdField,
+  requestId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ [field]: true })
+    .eq("id", taskId)
+    .eq(field, false)
+    .select("id");
+
+  if (error) {
+    log("error", "claim_failed", {
+      request_id: requestId,
+      task_id: taskId,
+      threshold: field,
+      error,
+    });
+    return false;
+  }
+  return !!(data && data.length > 0);
+}
+
+/** Release claim after hard FCM failure so a later run can retry */
+async function releaseThreshold(
+  supabase: SupabaseClient,
+  taskId: string,
+  field: ThresholdField,
+): Promise<void> {
+  await supabase
+    .from("tasks")
+    .update({ [field]: false })
+    .eq("id", taskId)
+    .eq(field, true);
+}
+
+// ─── Batched reads ──────────────────────────────────────────────────────────────
+
+async function fetchCandidateTasks(
+  supabase: SupabaseClient,
+  nowMs: number,
+  requestId: string,
+): Promise<TaskRow[]> {
+  const fromIso = new Date(nowMs - LOOKBACK_MS).toISOString();
+  const toIso = new Date(nowMs + LOOKAHEAD_MS).toISOString();
+
+  const all: TaskRow[] = [];
+
+  for (let page = 0; page < MAX_TASK_PAGES; page++) {
+    const from = page * TASK_PAGE_SIZE;
+    const to = from + TASK_PAGE_SIZE - 1;
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .select(
+        "id, user_id, text, time, done, notified_2h, notified_30m, notified_5m",
+      )
+      .eq("done", false)
+      .not("time", "is", null)
+      .gte("time", fromIso)
+      .lte("time", toIso)
+      .or("notified_2h.eq.false,notified_30m.eq.false,notified_5m.eq.false")
+      .order("time", { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      log("error", "tasks_fetch_failed", { request_id: requestId, error, page });
+      throw error;
+    }
+
+    const batch = (data ?? []) as TaskRow[];
+    all.push(...batch);
+
+    if (batch.length < TASK_PAGE_SIZE) break;
+  }
+
+  return all;
+}
+
+/**
+ * Load tokens once per run. If multiple rows per user, keep the last seen
+ * (caller should ensure one row per device in app; this is defensive).
+ */
+async function buildTokenMap(
+  supabase: SupabaseClient,
+  userIds: string[],
+  requestId: string,
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (userIds.length === 0) return map;
+
+  // PostgREST IN has limits; chunk at 500
+  const CHUNK = 500;
+  for (let i = 0; i < userIds.length; i += CHUNK) {
+    const chunk = userIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from("user_notification_tokens")
+      .select("user_id, fcm_token")
+      .in("user_id", chunk);
+
+    if (error) {
+      log("warn", "tokens_fetch_partial", {
+        request_id: requestId,
+        error,
+        chunk: i / CHUNK,
+      });
+      continue;
+    }
+
+    for (const row of data ?? []) {
+      if (row.fcm_token) map.set(row.user_id, row.fcm_token);
+    }
+  }
+
+  return map;
+}
+
+// ─── Reminder evaluation ───────────────────────────────────────────────────────
+
+function isInFireWindow(
+  nowMs: number,
+  deadlineMs: number,
+  thresholdMinutes: number,
+): boolean {
+  const fireAtMs = deadlineMs - thresholdMinutes * 60_000;
+  const windowEnd = fireAtMs + FIRE_WINDOW_MS;
+  return nowMs >= fireAtMs && nowMs <= windowEnd;
+}
+
+// ─── Main handler ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
-  const startTime = Date.now();
+  const request_id = crypto.randomUUID();
+  const baseCtx: LogContext = { request_id };
 
-  // ── Security: only allow POST requests ──────────────────────────────────────
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -245,220 +549,212 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // ── Supabase admin client (bypasses RLS) ─────────────────────────────────────
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")               ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")  ?? ""
-  );
-
-  const now    = new Date();
-  const nowMs  = now.getTime();
-  const results: NotificationResult[] = [];
-
-  console.log(`[send-reminders] ⏱ Run started at ${now.toISOString()}`);
-
-  // ── 1. Fetch all tasks that might need a notification ───────────────────────
-  // Only fetch tasks that: are not done, have a future deadline or recently passed,
-  // and have at least one un-notified threshold.
-  const { data: tasks, error: tasksError } = await supabase
-    .from("tasks")
-    .select("id, user_id, text, time, done, reminder_offset, notified_2h, notified_30m, notified_5m")
-    .eq("done", false)
-    .not("time", "is", null)
-    // Only tasks where deadline is between NOW-3h and NOW+2h (generous window to catch all thresholds)
-    .gte("time", new Date(nowMs - 3 * 60 * 60 * 1000).toISOString())
-    .lte("time", new Date(nowMs + 2 * 60 * 60 * 1000 + 60_000).toISOString())
-    // Only tasks with at least one un-notified threshold (OR condition via PostgREST)
-    .or("notified_2h.eq.false,notified_30m.eq.false,notified_5m.eq.false");
-
-  if (tasksError) {
-    console.error("[send-reminders] ❌ Failed to fetch tasks:", tasksError);
-    return new Response(JSON.stringify({ error: tasksError.message }), {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!supabaseUrl || !serviceKey) {
+    return new Response(JSON.stringify({ error: "Missing Supabase env" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  const taskList = (tasks ?? []) as Task[];
-  console.log(`[send-reminders] 📋 Found ${taskList.length} candidate task(s).`);
+  const supabase = createClient(supabaseUrl, serviceKey);
 
-  if (taskList.length === 0) {
+  const locked = await acquireLock(supabase, request_id);
+  if (!locked) {
+    log("info", "lock_busy", baseCtx);
     return new Response(
-      JSON.stringify({ message: "No tasks need reminders right now.", results: [] }),
-      { headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ message: "Another instance running", request_id }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
     );
   }
 
-  // ── 2. Cache FCM tokens by user_id to avoid repeated DB calls ───────────────
-  const uniqueUserIds = [...new Set(taskList.map((t) => t.user_id))];
-  const { data: tokenRows, error: tokenError } = await supabase
-    .from("user_notification_tokens")
-    .select("user_id, fcm_token")
-    .in("user_id", uniqueUserIds);
+  const started = Date.now();
+  const nowMs = Date.now();
+  const results: NotificationResult[] = [];
 
-  if (tokenError) {
-    console.warn("[send-reminders] ⚠ Could not fetch tokens:", tokenError);
-  }
+  try {
+    log("info", "run_started", { ...baseCtx, now: new Date(nowMs).toISOString() });
 
-  const tokenMap = new Map<string, string>(
-    (tokenRows ?? []).map((r: NotificationToken) => [r.user_id, r.fcm_token])
-  );
+    const tasks = await fetchCandidateTasks(supabase, nowMs, request_id);
+    log("info", "tasks_loaded", { ...baseCtx, count: tasks.length });
 
-  // ── 3. Process each task × each threshold ───────────────────────────────────
-  for (const task of taskList) {
-    // Native timestamptz flow (no manual timezone append / regex hacks)
-    // DB "time" is expected to be a timestamptz/ISO string with timezone.
-    console.log(`[Time] [Raw DB value] task.time:`, task.time);
-
-    const deadline = new Date(task.time);
-    console.log(`[Time] [Parsed Date] deadline:`, deadline.toString());
-
-    const deadlineMs = deadline.getTime();
-    console.log(`[Time] [Parsed timestamp] deadlineMs:`, deadlineMs);
-
-    console.log(`[Time] [Current timestamp] nowMs:`, nowMs);
-    console.log(`[Time] [Current Date] now:`, now.toISOString());
-
-    if (!Number.isFinite(deadlineMs)) {
-      console.error(`[Time] ❌ Invalid deadlineMs for task.id=${task.id} raw="${task.time}"`);
-      // Skip this task so reminder timing calculation doesn't break
-      continue;
-    }
-
-    const diffMs = deadlineMs - nowMs;
-    const diffMinutes = Math.round(diffMs / 60000);
-
-    console.log(`[Time] [Diff minutes] diffMs=${diffMs} diffMinutes=${diffMinutes}`);
-
-    for (const threshold of THRESHOLDS) {
-      // Skip if already notified for this threshold
-      if (task[threshold.field]) {
-        console.log(`[DEBUG]     ⏭  Skipping ${threshold.label} (already notified)`);
-        continue;
-      }
-
-      const fireAtMs = deadlineMs - threshold.minutes * 60 * 1000;
-      // Use a wider window (e.g. 15 minutes) instead of ±90s to ensure cron catches it 
-      // even if delayed, but caps it so we don't spam old notifications.
-      const windowEndMs = fireAtMs + (15 * 60 * 1000); 
-      
-      const isMatch = nowMs >= fireAtMs && nowMs <= windowEndMs;
-      console.log(`[DEBUG]     🎯 Threshold: ${threshold.label} | Fire At: ${new Date(fireAtMs).toISOString()} | Match: ${isMatch}`);
-
-      // Only fire if we're within the notification window
-      if (!isMatch) continue;
-
-      const fcmToken = tokenMap.get(task.user_id);
-      if (!fcmToken) {
-        console.log(`[send-reminders] ⚠ No FCM token for user ${task.user_id} — task: "${task.text}"`);
-        results.push({
-          task_id:   task.id,
-          task_text: task.text,
-          threshold: threshold.label,
-          user_id:   task.user_id,
-          status:    "no_token",
-        });
-        continue;
-      }
-
-      const title = `⏰ Deadline in ${threshold.label}!`;
-      const body  = `"${task.text}" is due at ${new Date(task.time).toLocaleTimeString("en-US", {
-        hour:   "2-digit",
-        minute: "2-digit",
-        timeZone: "Asia/Jakarta",
-      })}`;
-
-      // Send FCM notification
-      const { success, error: fcmError } = await sendFcmNotification(
-        fcmToken,
-        title,
-        body,
-        {
-          // Required by SW + payload contract
-          title: title,
-          body: body,
-          url: "/",
-          tag: `${task.id}:${threshold.field}`,
-          task_id: task.id,
-
-          // Extra
-          threshold: threshold.field,
-          deadline: task.time,
-        }
+    if (tasks.length === 0) {
+      return new Response(
+        JSON.stringify({
+          request_id,
+          message: "No tasks need reminders",
+          results: [],
+        }),
+        { headers: { "Content-Type": "application/json" } },
       );
+    }
 
-      if (!success) {
-        console.error(`[send-reminders] ❌ FCM send failed for task "${task.text}": ${fcmError}`);
+    const userIds = [...new Set(tasks.map((t) => t.user_id))];
+    const tokenMap = await buildTokenMap(supabase, userIds, request_id);
+    log("info", "tokens_loaded", {
+      ...baseCtx,
+      users: userIds.length,
+      tokens: tokenMap.size,
+    });
 
-        // If token is stale/unregistered, remove it from DB
-        if (fcmError === "UNREGISTERED") {
-          await supabase
-            .from("user_notification_tokens")
-            .delete()
-            .eq("user_id", task.user_id)
-            .eq("fcm_token", fcmToken);
-          console.log(`[send-reminders] 🗑 Removed stale FCM token for user ${task.user_id}`);
+    for (const task of tasks) {
+      const taskCtx: LogContext = {
+        ...baseCtx,
+        task_id: task.id,
+        user_id: task.user_id,
+      };
+
+      const deadline = parseDeadlineUtc(task.time);
+      if (!deadline) {
+        log("warn", "invalid_deadline", {
+          ...taskCtx,
+          raw_time: task.time,
+        });
+        results.push({
+          task_id: task.id,
+          threshold: "notified_5m",
+          user_id: task.user_id,
+          status: "invalid_deadline",
+          detail: "Missing or naive timezone in tasks.time",
+        });
+        continue;
+      }
+
+      const deadlineMs = deadline.getTime();
+
+      for (const th of THRESHOLDS) {
+        const thresholdCtx: LogContext = {
+          ...taskCtx,
+          threshold: th.field,
+        };
+
+        if (task[th.field]) continue;
+
+        if (!isInFireWindow(nowMs, deadlineMs, th.minutes)) continue;
+
+        // ── Idempotent claim BEFORE send (prevents duplicate under concurrency)
+        const claimed = await claimThreshold(
+          supabase,
+          task.id,
+          th.field,
+          request_id,
+        );
+        if (!claimed) {
+          results.push({
+            task_id: task.id,
+            threshold: th.field,
+            user_id: task.user_id,
+            status: "claim_lost",
+          });
+          continue;
         }
 
+        const fcmToken = tokenMap.get(task.user_id);
+        if (!fcmToken) {
+          await releaseThreshold(supabase, task.id, th.field);
+          results.push({
+            task_id: task.id,
+            threshold: th.field,
+            user_id: task.user_id,
+            status: "no_token",
+          });
+          continue;
+        }
+
+        const title = `⏰ Deadline in ${th.label}!`;
+        const body =
+          `"${task.text}" is due at ${formatDeadlineForUser(deadline)}`;
+
+        // Stable tag → FCM collapse / SW dedup if provider redelivers
+        const tag = `${task.id}:${th.field}`;
+
+        const fcmResult = await sendFcmWithRetry(
+          request_id,
+          fcmToken,
+          title,
+          body,
+          {
+            title,
+            body,
+            url: "/",
+            tag,
+            task_id: task.id,
+            threshold: th.field,
+            deadline: deadline.toISOString(),
+            request_id,
+          },
+          thresholdCtx,
+        );
+
+        if (!fcmResult.ok) {
+          if (fcmResult.unregistered) {
+            await supabase
+              .from("user_notification_tokens")
+              .delete()
+              .eq("user_id", task.user_id)
+              .eq("fcm_token", fcmToken);
+            tokenMap.delete(task.user_id);
+          }
+
+          // Allow retry on next cron
+          await releaseThreshold(supabase, task.id, th.field);
+
+          log("error", "fcm_failed", {
+            ...thresholdCtx,
+            error: fcmResult.error,
+          });
+
+          results.push({
+            task_id: task.id,
+            threshold: th.field,
+            user_id: task.user_id,
+            status: "fcm_error",
+            detail: fcmResult.error,
+          });
+          continue;
+        }
+
+        log("info", "notification_sent", thresholdCtx);
         results.push({
-          task_id:   task.id,
-          task_text: task.text,
-          threshold: threshold.label,
-          user_id:   task.user_id,
-          status:    "fcm_error",
-          detail:    fcmError,
+          task_id: task.id,
+          threshold: th.field,
+          user_id: task.user_id,
+          status: "sent",
         });
-        continue;
+
+        // Reflect in-memory so same run doesn't reconsider
+        task[th.field] = true;
       }
-
-      // ── 4. Mark threshold as notified (prevent duplicates) ─────────────────
-      const { error: updateError } = await supabase
-        .from("tasks")
-        .update({ [threshold.field]: true })
-        .eq("id", task.id);
-
-      if (updateError) {
-        console.error(`[send-reminders] ⚠ DB update failed for task ${task.id}:`, updateError);
-        results.push({
-          task_id:   task.id,
-          task_text: task.text,
-          threshold: threshold.label,
-          user_id:   task.user_id,
-          status:    "db_error",
-          detail:    updateError.message,
-        });
-        continue;
-      }
-
-      console.log(`[send-reminders] ✅ Notified: "${task.text}" [${threshold.label}] → user ${task.user_id}`);
-      results.push({
-        task_id:   task.id,
-        task_text: task.text,
-        threshold: threshold.label,
-        user_id:   task.user_id,
-        status:    "sent",
-      });
     }
+
+    const elapsed_ms = Date.now() - started;
+    const summary = {
+      request_id,
+      message: "Reminder check completed",
+      elapsed_ms,
+      total: results.length,
+      sent: results.filter((r) => r.status === "sent").length,
+      errors: results.filter((r) =>
+        ["fcm_error", "db_error"].includes(r.status)
+      ).length,
+      results,
+    };
+
+    log("info", "run_completed", { ...baseCtx, ...summary });
+    return new Response(JSON.stringify(summary), {
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    log("error", "run_crashed", {
+      ...baseCtx,
+      error: (e as Error).message,
+    });
+    return new Response(
+      JSON.stringify({ request_id, error: (e as Error).message }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  } finally {
+    await releaseLock(supabase, request_id);
   }
-
-  const elapsed = Date.now() - startTime;
-  const summary = {
-    message:   "Reminder check completed",
-    run_at:    now.toISOString(),
-    elapsed_ms: elapsed,
-    total:     results.length,
-    sent:      results.filter((r) => r.status === "sent").length,
-    skipped:   results.filter((r) => r.status === "skipped").length,
-    no_token:  results.filter((r) => r.status === "no_token").length,
-    errors:    results.filter((r) => ["fcm_error", "db_error"].includes(r.status)).length,
-    results,
-  };
-
-  console.log(
-    `[send-reminders] 🏁 Done in ${elapsed}ms | sent=${summary.sent} errors=${summary.errors}`
-  );
-
-  return new Response(JSON.stringify(summary), {
-    headers: { "Content-Type": "application/json" },
-  });
 });
