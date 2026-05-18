@@ -325,6 +325,10 @@ function App() {
   const updateTask = useCallback(
     async (id, updates) => {
       if (!user) return;
+      // Optimistic local state update for instant UI feedback
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+      );
       try {
         const { error } = await supabase
           .from("tasks")
@@ -333,6 +337,7 @@ function App() {
         if (error) throw error;
       } catch (error) {
         console.error("Error updating task: ", error);
+        toast.error("Gagal memperbarui tugas. Silakan periksa koneksi Anda.");
       }
     },
     [user],

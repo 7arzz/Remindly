@@ -18,8 +18,11 @@ function Detail({ task, onClose, updateTask, currentUser, onDelete }) {
       id: Date.now(),
       text,
       user_name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+      userName: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
       user_email: currentUser.email,
+      userEmail: currentUser.email,
       created_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     };
     const currentAnswers = task.answers || [];
     updateTask(task.id, { answers: [...currentAnswers, newAnswer] });

@@ -56,41 +56,47 @@ function Answer({ answers = [], onAddAnswer, onDeleteAnswer, currentUser }) {
              <p className="text-xs font-black uppercase tracking-widest text-text-muted text-center">No answers yet. Be the first to help!</p>
           </div>
         ) : (
-          answers.map((ans) => (
-            <div key={ans.id} className="group relative bg-bg-card/40 border border-border-primary/40 rounded-2xl p-5 hover:border-accent-primary/30 transition-all">
-              <div className="flex items-center gap-2 text-xs font-bold text-accent-primary mb-3">
-                <div className="w-5 h-5 rounded-full bg-accent-primary/20 flex items-center justify-center">
-                  <UserIcon size={10} />
-                </div>
-                <span>{ans.userName}</span>
-              </div>
-              
-              <div className="text-text-primary text-sm sm:text-base leading-relaxed whitespace-pre-wrap mb-4">
-                {ans.text}
-              </div>
-
-              <div className="flex justify-between items-center mt-2">
-                <div className="text-[10px] font-medium text-text-muted uppercase tracking-widest">
-                  {new Date(ans.createdAt).toLocaleString([], {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+          answers.map((ans) => {
+            const userNameVal = ans.userName || ans.user_name || "User";
+            const userEmailVal = ans.userEmail || ans.user_email || "";
+            const createdAtVal = ans.createdAt || ans.created_at || new Date().toISOString();
+            
+            return (
+              <div key={ans.id} className="group relative bg-bg-card/40 border border-border-primary/40 rounded-2xl p-5 hover:border-accent-primary/30 transition-all">
+                <div className="flex items-center gap-2 text-xs font-bold text-accent-primary mb-3">
+                  <div className="w-5 h-5 rounded-full bg-accent-primary/20 flex items-center justify-center">
+                    <UserIcon size={10} />
+                  </div>
+                  <span>{userNameVal}</span>
                 </div>
                 
-                {ans.userEmail === currentUser.email && (
-                  <button
-                    className="p-1.5 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
-                    onClick={() => onDeleteAnswer(ans.id)}
-                    title="Delete your answer"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
+                <div className="text-text-primary text-sm sm:text-base leading-relaxed whitespace-pre-wrap mb-4">
+                  {ans.text}
+                </div>
+
+                <div className="flex justify-between items-center mt-2">
+                  <div className="text-[10px] font-medium text-text-muted uppercase tracking-widest">
+                    {new Date(createdAtVal).toLocaleString([], {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                  
+                  {userEmailVal === currentUser.email && (
+                    <button
+                      className="p-1.5 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
+                      onClick={() => onDeleteAnswer(ans.id)}
+                      title="Delete your answer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
