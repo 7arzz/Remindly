@@ -345,125 +345,151 @@ function SummarySection({ currentUser }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <AnimatePresence>
-          {filteredSummaries.map((s) => (
-            <Motion.div
-              key={s.id}
-              layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="glass-card flex flex-col p-6 hover:translate-y-[-4px] active:scale-[0.98] group"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-bold text-text-primary leading-tight group-hover:text-accent-primary transition-colors">
-                  {s.title}
-                </h3>
-                <div className="flex gap-1">
-                  {s.user_email === currentUser.email && (
-                    <>
-                      <button
-                        className="p-2 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all opacity-0 group-hover:opacity-100"
-                        onClick={() => handleEdit(s)}
-                      >
-                        <Edit3 size={16} />
-                      </button>
-                      <button
-                        className="p-2 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
-                        onClick={() => handleDelete(s)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {s.image_url && (
-                <div className="mb-4 rounded-xl overflow-hidden bg-bg-secondary/30 relative">
-                  {getFileType(s.image_url) === "image" ? (
-                    <img
-                      src={s.image_url}
-                      alt={s.title}
-                      className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="w-full bg-bg-secondary/20 p-4 rounded-xl border border-border-primary/20 flex items-center justify-between hover:border-accent-primary/30 transition-all">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-accent-primary/10 text-accent-primary border border-accent-primary/20 flex items-center justify-center flex-shrink-0">
-                          {getFileType(s.image_url) === "pdf" ? (
-                            <span className="text-[10px] font-black">PDF</span>
-                          ) : getFileType(s.image_url) === "pptx" ? (
-                            <span className="text-[10px] font-black">PPT</span>
-                          ) : getFileType(s.image_url) === "docx" ? (
-                            <span className="text-[10px] font-black">DOC</span>
-                          ) : (
-                            <File size={16} />
-                          )}
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-xs font-bold text-text-primary truncate">
-                            {s.image_url.split("/").pop().split("?")[0]}
-                          </span>
-                          <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">
-                            {getFileType(s.image_url)} File
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <a
-                          href={s.image_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-white rounded-lg transition-all"
-                          title="Open in Browser"
-                        >
-                          <ExternalLink size={12} />
-                        </a>
-                        <a
-                          href={s.image_url}
-                          download
-                          className="p-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-white rounded-lg transition-all"
-                          title="Download File"
-                        >
-                          <Download size={12} />
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <p className="text-text-secondary text-sm leading-relaxed mb-6 line-clamp-3">
-                {s.content}
-              </p>
-
-              <div className="mt-auto pt-4 border-t border-border-primary/30 flex justify-between items-center">
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-muted">
-                  <Calendar size={12} className="text-accent-primary/40" />
-                  <span>{s.date}</span>
-                </div>
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-accent-primary">
-                  <UserIcon size={12} />
-                  <span>{s.user_name}</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  setSelectedSummaryForChat(s);
-                  setIsChatModalOpen(true);
-                }}
-                className="mt-4 w-full py-2.5 bg-accent-primary/10 text-accent-primary border border-accent-primary/20 rounded-xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-accent-primary hover:text-white transition-all shadow-sm group-hover:shadow-accent-primary/20"
+      {filteredSummaries.length === 0 ? (
+        <Motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-8 sm:p-12 text-center flex flex-col items-center justify-center gap-5 border border-border-primary/30 max-w-lg mx-auto w-full mt-4"
+        >
+          <div className="p-4 bg-accent-primary/10 text-accent-primary rounded-full animate-bounce">
+            <Brain size={36} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <h3 className="text-lg font-black text-text-primary">Belum Ada Catatan Ringkasan AI</h3>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              Buat ringkasan baru atau unggah catatan Anda dengan mengeklik tombol{" "}
+              <strong className="text-accent-primary">New Summary</strong> di atas.
+            </p>
+          </div>
+          <div className="p-4 bg-bg-secondary/40 rounded-2xl border border-border-primary/20 text-xs text-text-muted leading-relaxed text-left flex gap-3">
+            <MessageSquare size={20} className="text-accent-primary flex-shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold text-text-secondary block mb-1">💡 Cara Menggunakan Tanya AI:</span>
+              Setelah Anda membuat catatan ringkasan, tombol <strong className="text-accent-primary">"Tanya AI tentang Catatan Ini"</strong> akan otomatis muncul di bagian bawah setiap kartu catatan ringkasan Anda! Anda bisa menanyakan apa saja tentang teks maupun lampiran berkas Anda.
+            </div>
+          </div>
+        </Motion.div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <AnimatePresence>
+            {filteredSummaries.map((s) => (
+              <Motion.div
+                key={s.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="glass-card flex flex-col p-6 hover:translate-y-[-4px] active:scale-[0.98] group"
               >
-                <MessageSquare size={14} />
-                <span>Tanya AI tentang Catatan Ini</span>
-              </button>
-            </Motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-xl font-bold text-text-primary leading-tight group-hover:text-accent-primary transition-colors">
+                    {s.title}
+                  </h3>
+                  <div className="flex gap-1">
+                    {s.user_email === currentUser.email && (
+                      <>
+                        <button
+                          className="p-2 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all opacity-0 group-hover:opacity-100"
+                          onClick={() => handleEdit(s)}
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                        <button
+                          className="p-2 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
+                          onClick={() => handleDelete(s)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {s.image_url && (
+                  <div className="mb-4 rounded-xl overflow-hidden bg-bg-secondary/30 relative">
+                    {getFileType(s.image_url) === "image" ? (
+                      <img
+                        src={s.image_url}
+                        alt={s.title}
+                        className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full bg-bg-secondary/20 p-4 rounded-xl border border-border-primary/20 flex items-center justify-between hover:border-accent-primary/30 transition-all">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-accent-primary/10 text-accent-primary border border-accent-primary/20 flex items-center justify-center flex-shrink-0">
+                            {getFileType(s.image_url) === "pdf" ? (
+                              <span className="text-[10px] font-black">PDF</span>
+                            ) : getFileType(s.image_url) === "pptx" ? (
+                              <span className="text-[10px] font-black">PPT</span>
+                            ) : getFileType(s.image_url) === "docx" ? (
+                              <span className="text-[10px] font-black">DOC</span>
+                            ) : (
+                              <File size={16} />
+                            )}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-bold text-text-primary truncate">
+                              {s.image_url.split("/").pop().split("?")[0]}
+                            </span>
+                            <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">
+                              {getFileType(s.image_url)} File
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <a
+                            href={s.image_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-white rounded-lg transition-all"
+                            title="Open in Browser"
+                          >
+                            <ExternalLink size={12} />
+                          </a>
+                          <a
+                            href={s.image_url}
+                            download
+                            className="p-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-white rounded-lg transition-all"
+                            title="Download File"
+                          >
+                            <Download size={12} />
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <p className="text-text-secondary text-sm leading-relaxed mb-6 line-clamp-3">
+                  {s.content}
+                </p>
+
+                <div className="mt-auto pt-4 border-t border-border-primary/30 flex justify-between items-center">
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-muted">
+                    <Calendar size={12} className="text-accent-primary/40" />
+                    <span>{s.date}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-accent-primary">
+                    <UserIcon size={12} />
+                    <span>{s.user_name}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setSelectedSummaryForChat(s);
+                    setIsChatModalOpen(true);
+                  }}
+                  className="mt-4 w-full py-2.5 bg-accent-primary/10 text-accent-primary border border-accent-primary/20 rounded-xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-accent-primary hover:text-white transition-all shadow-sm group-hover:shadow-accent-primary/20"
+                >
+                  <MessageSquare size={14} />
+                  <span>Tanya AI tentang Catatan Ini</span>
+                </button>
+              </Motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
 
       {createPortal(
         <AnimatePresence>
