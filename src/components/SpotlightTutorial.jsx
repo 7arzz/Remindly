@@ -309,8 +309,8 @@ export default function SpotlightTutorial({
         aria-label={`Tutorial step ${currentStep + 1} of ${totalSteps}`}
         aria-live="polite"
       >
-        {/* ── Header: Desktop = badge + close | Mobile = hamburger hint ── */}
-        {window.innerWidth >= 640 ? (
+        {/* ── Header: Desktop = badge + close | Mobile = hamburger hint on hamburger step, standard badge on others ── */}
+        {window.innerWidth >= 640 || step?.targetId !== "mobile-hamburger-btn" ? (
           <div className="tutorial-tooltip__header">
             <div className="tutorial-tooltip__badge">
               <Sparkles size={12} />
