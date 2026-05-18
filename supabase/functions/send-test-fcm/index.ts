@@ -185,13 +185,29 @@ async function sendFcmNotification(
   return { success: true, status: res.status, responseBody };
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 Deno.serve(async (req: Request) => {
   const started = new Date().toISOString();
+
+  // Handle CORS preflight (OPTIONS)
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: corsHeaders,
+    });
+  }
 
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
     });
   }
 
@@ -206,7 +222,10 @@ Deno.serve(async (req: Request) => {
   if (!token || typeof token !== "string") {
     return new Response(JSON.stringify({ error: "Missing required body.token (string)" }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
     });
   }
 
@@ -237,6 +256,11 @@ Deno.serve(async (req: Request) => {
       firebaseStatus: status ?? null,
       responseBody,
     }),
-    { headers: { "Content-Type": "application/json" } },
+    {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
+    },
   );
 });
