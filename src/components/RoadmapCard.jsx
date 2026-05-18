@@ -184,19 +184,23 @@ export default function RoadmapCard({
         )}
       </div>
 
-      {isStepModalOpen && selectedStep && (
-        <StepModal
-          isOpen={isStepModalOpen}
-          onClose={() => {
-            setIsStepModalOpen(false);
-            setSelectedStepId(null);
-          }}
-          step={selectedStep}
-          roadmapTitle={roadmap.title}
-          onToggle={() => onToggleStep(roadmap.id, selectedStep.id)}
-          onUpdateDetail={(newDetail) => onUpdateStep(roadmap.id, selectedStep.id, { detail: newDetail })}
-        />
-      )}
+      <AnimatePresence>
+        {isStepModalOpen && selectedStep && (
+          <StepModal
+            key={selectedStep.id}
+            isOpen={isStepModalOpen}
+            onClose={() => {
+              setIsStepModalOpen(false);
+              setSelectedStepId(null);
+            }}
+            step={selectedStep}
+            roadmapTitle={roadmap.title}
+            roadmapProgress={pct}
+            onToggle={() => onToggleStep(roadmap.id, selectedStep.id)}
+            onUpdateDetail={(newDetail) => onUpdateStep(roadmap.id, selectedStep.id, { detail: newDetail })}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Add step form */}
       <form className="add-step-form" onSubmit={handleAddStep}>

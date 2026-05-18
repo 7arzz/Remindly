@@ -1,11 +1,11 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { createPortal } from "react-dom";
-import { X, Sparkles, Loader2, CheckCircle2, Circle, Pencil, Save, Brain } from "lucide-react";
+import { X, Sparkles, Loader2, CheckCircle2, Circle, Pencil, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from "sonner";
 
-export default function StepModal({ step, isOpen, onClose, onToggle, roadmapTitle, onUpdateDetail }) {
+export default function StepModal({ step, isOpen, onClose, onToggle, roadmapTitle, onUpdateDetail, roadmapProgress }) {
   const [aiDetail, setAiDetail] = useState(step.detail || "");
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -16,12 +16,15 @@ export default function StepModal({ step, isOpen, onClose, onToggle, roadmapTitl
     setAiDetail(step.detail || "");
     setTempDetail(step.detail || "");
     setIsEditing(false);
-  }, [step.id]);
+  }, [step.id, step.detail]);
 
   const handleAskAI = async () => {
     setLoading(true);
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Gemini API key is missing. Please set VITE_GEMINI_API_KEY.");
+      }
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
@@ -54,98 +57,117 @@ export default function StepModal({ step, isOpen, onClose, onToggle, roadmapTitl
     setIsEditing(false);
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen && createPortal(
-        <div className="fixed inset-0 z-[200] overflow-y-auto bg-black/60 backdrop-blur-sm custom-scrollbar" onClick={onClose}>
-          <div className="flex min-h-full w-full justify-center items-start p-4 sm:p-6">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-bg-card border border-border-primary rounded-[24px] w-full max-w-lg shadow-2xl relative my-auto"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="p-6 sm:p-8 flex flex-col gap-6">
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-accent-primary">Step Details</span>
-                    <h2 className="text-xl font-bold text-text-primary leading-tight">{step.text}</h2>
+  return createPortal(
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] overflow-y-auto bg-black/60 backdrop-blur-sm custom-scrollbar flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div className="flex min-h-full w-full justify-center items-center p-4 sm:p-6">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
+          className="bg-bg-card border border-border-primary rounded-[24px] w-full max-w-lg shadow-2xl relative my-auto overflow-hidden"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header Banner Background Decor */}
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-accent-primary via-cyan-500 to-accent-primary" />
+
+          <div className="p-6 sm:p-8 flex flex-col gap-6">
+            <div className="flex justify-between items-start gap-4">
+              <div className="flex flex-col gap-1 w-full">
+                <span className="text-[10px] font-black uppercase tracking-widest text-accent-primary">Step Details</span>
+                <h2 className="text-xl font-bold text-text-primary leading-tight">{step.text}</h2>
+                
+                {/* Beautiful Roadmap Progress inside modal */}
+                <div className="mt-3 flex items-center gap-3 bg-bg-secondary/40 p-2.5 rounded-xl border border-border-primary/30 w-full">
+                  <div className="flex-1 bg-bg-primary rounded-full h-2 overflow-hidden border border-border-primary/20">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${roadmapProgress}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="bg-gradient-to-r from-accent-primary to-cyan-500 h-full rounded-full"
+                    />
                   </div>
-                  <div className="flex gap-2">
-                    <button 
-                      className={`p-2 rounded-xl transition-all ${isEditing ? 'bg-accent-primary text-white' : 'bg-bg-secondary text-text-muted hover:text-accent-primary'}`}
-                      onClick={() => setIsEditing(!isEditing)}
-                      title="Edit Manual"
-                    >
-                      <Pencil size={18}/>
-                    </button>
-                    <button onClick={onClose} className="p-2 rounded-xl bg-bg-secondary text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all">
-                      <X size={20}/>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-4">
-                   <div className="bg-bg-secondary/30 rounded-2xl p-5 border border-border-primary/50 min-h-[120px] relative">
-                      {isEditing ? (
-                        <div className="flex flex-col gap-3 h-full">
-                          <textarea 
-                            value={tempDetail}
-                            onChange={(e) => setTempDetail(e.target.value)}
-                            className="w-full bg-transparent border-none text-sm text-text-primary focus:ring-0 resize-none min-h-[100px] custom-scrollbar"
-                            placeholder="Tulis panduan atau catatan kamu di sini..."
-                            autoFocus
-                          />
-                          <div className="flex justify-end gap-2 pt-2 border-t border-border-primary/20">
-                            <button className="px-3 py-1.5 text-xs font-bold text-text-muted hover:text-text-primary" onClick={() => { setIsEditing(false); setTempDetail(aiDetail); }}>Cancel</button>
-                            <button className="flex items-center gap-2 px-3 py-1.5 bg-accent-primary text-bg-primary rounded-lg text-xs font-bold" onClick={handleSaveDetail}>
-                              <Save size={12}/> Save Guide
-                            </button>
-                          </div>
-                        </div>
-                      ) : aiDetail ? (
-                        <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap fadeIn">
-                          {aiDetail}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center gap-3 py-4 opacity-50">
-                          <Sparkles size={24} className="text-accent-primary" />
-                          <p className="text-xs font-medium">Belum ada panduan. Gunakan AI atau tulis sendiri!</p>
-                        </div>
-                      )}
-                   </div>
-
-                   {!isEditing && (
-                     <button 
-                      onClick={handleAskAI}
-                      disabled={loading}
-                      className="btn-primary w-full py-3.5 bg-gradient-to-r from-accent-primary to-cyan-500 shadow-lg shadow-accent-primary/20"
-                     >
-                       {loading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-                       <span>{loading ? "Menyusun Panduan..." : "Tanya Panduan AI"}</span>
-                     </button>
-                   )}
-                </div>
-
-                <div className="pt-4 border-t border-border-primary/30 flex justify-between items-center">
-                   <button 
-                    onClick={() => { onToggle(); onClose(); }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                      step.done ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-bg-secondary text-text-muted'
-                    }`}
-                   >
-                     {step.done ? <CheckCircle2 size={14} /> : <Circle size={14} />}
-                     {step.done ? "Completed" : "Mark as Done"}
-                   </button>
-                   <span className="text-[10px] font-medium text-text-muted uppercase tracking-widest line-clamp-1">Map: {roadmapTitle}</span>
+                  <span className="text-[10px] font-black text-accent-primary whitespace-nowrap">{roadmapProgress}% Done</span>
                 </div>
               </div>
-            </motion.div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button 
+                  className={`p-2 rounded-xl transition-all ${isEditing ? 'bg-accent-primary text-bg-primary' : 'bg-bg-secondary text-text-muted hover:text-accent-primary'}`}
+                  onClick={() => setIsEditing(!isEditing)}
+                  title="Edit Manual"
+                >
+                  <Pencil size={18}/>
+                </button>
+                <button onClick={onClose} className="p-2 rounded-xl bg-bg-secondary text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all">
+                  <X size={20}/>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4">
+               <div className="bg-bg-secondary/30 rounded-2xl p-5 border border-border-primary/50 min-h-[120px] relative">
+                  {isEditing ? (
+                    <div className="flex flex-col gap-3 h-full">
+                      <textarea 
+                        value={tempDetail}
+                        onChange={(e) => setTempDetail(e.target.value)}
+                        className="w-full bg-transparent border-none text-sm text-text-primary focus:ring-0 resize-none min-h-[120px] custom-scrollbar"
+                        placeholder="Tulis panduan atau catatan kamu di sini..."
+                        autoFocus
+                      />
+                      <div className="flex justify-end gap-2 pt-2 border-t border-border-primary/20">
+                        <button className="px-3 py-1.5 text-xs font-bold text-text-muted hover:text-text-primary" onClick={() => { setIsEditing(false); setTempDetail(aiDetail); }}>Cancel</button>
+                        <button className="flex items-center gap-2 px-3 py-1.5 bg-accent-primary text-bg-primary rounded-lg text-xs font-bold" onClick={handleSaveDetail}>
+                          <Save size={12}/> Save Guide
+                        </button>
+                      </div>
+                    </div>
+                  ) : aiDetail ? (
+                    <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap fadeIn">
+                      {aiDetail}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-3 py-4 opacity-50">
+                      <Sparkles size={24} className="text-accent-primary" />
+                      <p className="text-xs font-medium text-center">Belum ada panduan. Gunakan AI atau tulis sendiri!</p>
+                    </div>
+                  )}
+               </div>
+
+               {!isEditing && (
+                 <button 
+                  onClick={handleAskAI}
+                  disabled={loading}
+                  className="btn-primary w-full py-3.5 bg-gradient-to-r from-accent-primary to-cyan-500 shadow-lg shadow-accent-primary/20 flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-xs"
+                 >
+                   {loading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                   <span>{loading ? "Menyusun Panduan..." : "Tanya Panduan AI"}</span>
+                 </button>
+               )}
+            </div>
+
+            <div className="pt-4 border-t border-border-primary/30 flex justify-between items-center">
+               <button 
+                onClick={() => { onToggle(); onClose(); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                  step.done ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-bg-secondary text-text-muted'
+                }`}
+               >
+                 {step.done ? <CheckCircle2 size={14} /> : <Circle size={14} />}
+                 {step.done ? "Completed" : "Mark as Done"}
+               </button>
+               <span className="text-[10px] font-medium text-text-muted uppercase tracking-widest line-clamp-1">Map: {roadmapTitle}</span>
+            </div>
           </div>
-        </div>,
-        document.body
-      )}
-    </AnimatePresence>
+        </motion.div>
+      </div>
+    </motion.div>,
+    document.body
   );
 }
