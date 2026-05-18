@@ -306,24 +306,29 @@ Deno.serve(async (req: Request) => {
 
   // ── 3. Process each task × each threshold ───────────────────────────────────
   for (const task of taskList) {
-    // Prevent timezone bugs: if the DB time string lacks timezone info, Deno parses as UTC.
-    // Since the client sends local time (from datetime-local), we append the local timezone
-    // offset (+07:00 for WIB/Jakarta) to match the browser's local time evaluation.
-    let timeStr = task.time;
-    if (
-      !timeStr.endsWith("Z") &&
-      !timeStr.match(/[+-]\d{2}:\d{2}$/)
-    ) {
-      timeStr += "+07:00";
+    // Native timestamptz flow (no manual timezone append / regex hacks)
+    // DB "time" is expected to be a timestamptz/ISO string with timezone.
+    console.log(`[Time] [Raw DB value] task.time:`, task.time);
+
+    const deadline = new Date(task.time);
+    console.log(`[Time] [Parsed Date] deadline:`, deadline.toString());
+
+    const deadlineMs = deadline.getTime();
+    console.log(`[Time] [Parsed timestamp] deadlineMs:`, deadlineMs);
+
+    console.log(`[Time] [Current timestamp] nowMs:`, nowMs);
+    console.log(`[Time] [Current Date] now:`, now.toISOString());
+
+    if (!Number.isFinite(deadlineMs)) {
+      console.error(`[Time] ❌ Invalid deadlineMs for task.id=${task.id} raw="${task.time}"`);
+      // Skip this task so reminder timing calculation doesn't break
+      continue;
     }
-    const deadlineMs = new Date(timeStr).getTime();
+
     const diffMs = deadlineMs - nowMs;
     const diffMinutes = Math.round(diffMs / 60000);
 
-    console.log(`[DEBUG] 📝 Checking Task ID: ${task.id} | "${task.text}"`);
-    console.log(`[DEBUG]     Parsed time: ${new Date(deadlineMs).toISOString()} (Original: ${task.time})`);
-    console.log(`[DEBUG]     Current Deno time: ${now.toISOString()}`);
-    console.log(`[DEBUG]     Diff: ${diffMinutes} minutes`);
+    console.log(`[Time] [Diff minutes] diffMs=${diffMs} diffMinutes=${diffMinutes}`);
 
     for (const threshold of THRESHOLDS) {
       // Skip if already notified for this threshold
