@@ -9,12 +9,28 @@ import {
   Loader2,
   Image as ImageIcon,
   Bell,
+  File,
+  Download,
+  ExternalLink,
 } from "lucide-react";
 import { supabase } from "../supabase";
 import { toast } from "sonner";
 import { useState } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Sparkles } from "lucide-react";
+
+const getFileType = (url) => {
+  if (!url) return null;
+  const ext = url.split("?")[0].split(".").pop().toLowerCase();
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext)) {
+    return "image";
+  }
+  if (["pdf"].includes(ext)) return "pdf";
+  if (["doc", "docx"].includes(ext)) return "docx";
+  if (["ppt", "pptx"].includes(ext)) return "pptx";
+  if (["xls", "xlsx"].includes(ext)) return "xlsx";
+  return "document";
+};
 
 function TaskInput({ addTask }) {
   const [text, setText] = useState("");
@@ -96,15 +112,18 @@ function TaskInput({ addTask }) {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        // 2MB Limit
-        toast.error("Image size too large (max 2MB)");
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("File size too large (max 5MB)");
         return;
       }
       setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result);
-      reader.readAsDataURL(file);
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onloadend = () => setImagePreview(reader.result);
+        reader.readAsDataURL(file);
+      } else {
+        setImagePreview("document");
+      }
     }
   };
 
@@ -252,11 +271,11 @@ function TaskInput({ addTask }) {
         >
           <ImageIcon size={18} />
           <span className="text-sm font-semibold">
-            {imagePreview ? "Change Photo" : "Add Photo"}
+            {imagePreview ? "Change Attachment" : "Add Attachment"}
           </span>
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
             className="hidden"
             onChange={handleImageChange}
             disabled={loading}
@@ -265,12 +284,21 @@ function TaskInput({ addTask }) {
 
         {imagePreview && (
           <div className="relative group animate-in fade-in zoom-in duration-300">
-            <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-accent-primary/30 shadow-lg">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="w-full h-full object-cover"
-              />
+            <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-accent-primary/30 shadow-lg flex items-center justify-center bg-bg-secondary">
+              {imagePreview === "document" || (imageFile && !imageFile.type.startsWith("image/")) ? (
+                <div className="flex flex-col items-center justify-center p-1 text-accent-primary">
+                  <FileText size={20} />
+                  <span className="text-[8px] font-black uppercase mt-1 truncate max-w-[50px]">
+                    {imageFile ? imageFile.name.split(".").pop() : "DOC"}
+                  </span>
+                </div>
+              ) : (
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                />
+              )}
             </div>
             <button
               onClick={() => {

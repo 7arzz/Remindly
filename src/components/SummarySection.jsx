@@ -13,6 +13,9 @@ import {
   Sparkles,
   Brain,
   MessageSquare,
+  File,
+  Download,
+  ExternalLink,
 } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
@@ -20,6 +23,19 @@ import { supabase } from "../supabase";
 import { toast } from "sonner";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import SummaryChatModal from "./SummaryChatModal";
+
+const getFileType = (url) => {
+  if (!url) return null;
+  const ext = url.split("?")[0].split(".").pop().toLowerCase();
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext)) {
+    return "image";
+  }
+  if (["pdf"].includes(ext)) return "pdf";
+  if (["doc", "docx"].includes(ext)) return "docx";
+  if (["ppt", "pptx"].includes(ext)) return "pptx";
+  if (["xls", "xlsx"].includes(ext)) return "xlsx";
+  return "document";
+};
 
 function SummarySection({ currentUser }) {
   const [summaries, setSummaries] = useState([]);
@@ -273,12 +289,20 @@ function SummarySection({ currentUser }) {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("File size too large (max 5MB)");
+        return;
+      }
       setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setImagePreview("document");
+      }
     }
   };
 
@@ -358,11 +382,56 @@ function SummarySection({ currentUser }) {
 
               {s.image_url && (
                 <div className="mb-4 rounded-xl overflow-hidden bg-bg-secondary/30 relative">
-                  <img
-                    src={s.image_url}
-                    alt={s.title}
-                    className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
+                  {getFileType(s.image_url) === "image" ? (
+                    <img
+                      src={s.image_url}
+                      alt={s.title}
+                      className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full bg-bg-secondary/20 p-4 rounded-xl border border-border-primary/20 flex items-center justify-between hover:border-accent-primary/30 transition-all">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-accent-primary/10 text-accent-primary border border-accent-primary/20 flex items-center justify-center flex-shrink-0">
+                          {getFileType(s.image_url) === "pdf" ? (
+                            <span className="text-[10px] font-black">PDF</span>
+                          ) : getFileType(s.image_url) === "pptx" ? (
+                            <span className="text-[10px] font-black">PPT</span>
+                          ) : getFileType(s.image_url) === "docx" ? (
+                            <span className="text-[10px] font-black">DOC</span>
+                          ) : (
+                            <File size={16} />
+                          )}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-bold text-text-primary truncate">
+                            {s.image_url.split("/").pop().split("?")[0]}
+                          </span>
+                          <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">
+                            {getFileType(s.image_url)} File
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <a
+                          href={s.image_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-white rounded-lg transition-all"
+                          title="Open in Browser"
+                        >
+                          <ExternalLink size={12} />
+                        </a>
+                        <a
+                          href={s.image_url}
+                          download
+                          className="p-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-white rounded-lg transition-all"
+                          title="Download File"
+                        >
+                          <Download size={12} />
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -490,29 +559,45 @@ function SummarySection({ currentUser }) {
 
                       <div className="flex flex-col gap-2">
                         <label className="text-xs font-black uppercase tracking-widest text-text-muted ml-1">
-                          Photo (Optional)
+                          Attachment (Photo/Doc) (Optional)
                         </label>
                         {imagePreview ? (
-                          <div className="relative w-full rounded-xl overflow-hidden border border-border-primary/50 group">
-                            <img
-                              src={imagePreview}
-                              alt="Preview"
-                              className="w-full h-48 object-cover"
-                            />
+                          <div className="relative w-full rounded-xl overflow-hidden border border-border-primary/50 group bg-bg-secondary p-6 flex flex-col items-center justify-center min-h-[120px]">
+                            {imagePreview === "document" || (imagePreview.startsWith("http") && getFileType(imagePreview) !== "image") ? (
+                              <div className="flex flex-col items-center justify-center text-accent-primary gap-2">
+                                <div className="p-3.5 bg-accent-primary/10 rounded-2xl border border-accent-primary/20">
+                                  <FileText size={32} />
+                                </div>
+                                <span className="text-sm font-bold text-text-primary text-center truncate max-w-[300px]">
+                                  {imageFile ? imageFile.name : imagePreview.split("/").pop().split("?")[0]}
+                                </span>
+                                <span className="text-[10px] font-black uppercase text-text-muted">
+                                  {imageFile ? imageFile.name.split(".").pop() : getFileType(imagePreview)} Document
+                                </span>
+                              </div>
+                            ) : (
+                              <img
+                                src={imagePreview}
+                                alt="Preview"
+                                className="w-full h-48 object-cover rounded-xl"
+                              />
+                            )}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                              <button
-                                type="button"
-                                onClick={handleAIScan}
-                                disabled={isScanning}
-                                className="bg-accent-primary text-white px-4 py-2 rounded-full hover:bg-accent-primary/90 transition-all shadow-lg flex items-center gap-2 text-sm font-bold disabled:opacity-50"
-                              >
-                                {isScanning ? (
-                                  <Loader2 size={16} className="animate-spin" />
-                                ) : (
-                                  <Sparkles size={16} />
-                                )}
-                                {isScanning ? "Scanning..." : "Scan with AI"}
-                              </button>
+                              {(imageFile?.type.startsWith("image/") || (imagePreview.startsWith("http") && getFileType(imagePreview) === "image")) && (
+                                <button
+                                  type="button"
+                                  onClick={handleAIScan}
+                                  disabled={isScanning}
+                                  className="bg-accent-primary text-white px-4 py-2 rounded-full hover:bg-accent-primary/90 transition-all shadow-lg flex items-center gap-2 text-sm font-bold disabled:opacity-50"
+                                >
+                                  {isScanning ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                  ) : (
+                                    <Sparkles size={16} />
+                                  )}
+                                  {isScanning ? "Scanning..." : "Scan with AI"}
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={removeImage}
@@ -529,14 +614,14 @@ function SummarySection({ currentUser }) {
                               <ImageIcon size={24} />
                             </div>
                             <span className="text-sm font-medium text-text-primary">
-                              Click to upload an image
+                              Click to upload a file (Photo, PDF, PPT, Word, Excel)
                             </span>
                             <span className="text-xs text-text-muted">
-                              JPEG, PNG, JPG
+                              JPEG, PNG, PDF, PPT, DOCX, XLSX (Max 5MB)
                             </span>
                             <input
                               type="file"
-                              accept="image/*"
+                              accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
                               onChange={handleImageChange}
                               className="hidden"
                             />

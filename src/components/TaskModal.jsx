@@ -14,10 +14,26 @@ import {
   Save,
   Send,
   Loader2,
+  File,
+  Download,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatForDateTimeLocal } from "../utils/helpers";
 import { supabase } from "../supabase";
+
+const getFileType = (url) => {
+  if (!url) return null;
+  const ext = url.split("?")[0].split(".").pop().toLowerCase();
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext)) {
+    return "image";
+  }
+  if (["pdf"].includes(ext)) return "pdf";
+  if (["doc", "docx"].includes(ext)) return "docx";
+  if (["ppt", "pptx"].includes(ext)) return "pptx";
+  if (["xls", "xlsx"].includes(ext)) return "xlsx";
+  return "document";
+};
 
 const TaskModal = ({
   task,
@@ -189,7 +205,7 @@ const TaskModal = ({
         >
           {/* Header */}
           <div className="relative h-48 sm:h-64 bg-bg-secondary overflow-hidden">
-            {task.image_url ? (
+            {task.image_url && getFileType(task.image_url) === "image" ? (
               <img
                 src={task.image_url}
                 alt={task.text}
@@ -367,6 +383,80 @@ const TaskModal = ({
                 </div>
               )}
             </div>
+
+            {/* Attachment / Document */}
+            {task.image_url && (
+              <div className="flex flex-col gap-2.5">
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">
+                  Attachment File
+                </span>
+                {getFileType(task.image_url) === "image" ? (
+                  <div className="flex items-center justify-between bg-bg-secondary/20 p-4 rounded-2xl border border-border-primary/20 hover:border-accent-primary/30 transition-all">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl overflow-hidden border border-border-primary/40 flex-shrink-0">
+                        <img src={task.image_url} alt="Attachment" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold text-text-primary truncate">Image Attachment</span>
+                        <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">JPEG/PNG/WebP</span>
+                      </div>
+                    </div>
+                    <a
+                      href={task.image_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2.5 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-white rounded-xl transition-all"
+                      title="Open Image"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-bg-secondary/20 p-4 rounded-2xl border border-border-primary/20 hover:border-accent-primary/30 transition-all">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-accent-primary/10 text-accent-primary border border-accent-primary/20 flex items-center justify-center flex-shrink-0">
+                        {getFileType(task.image_url) === "pdf" ? (
+                          <span className="text-xs font-black">PDF</span>
+                        ) : getFileType(task.image_url) === "pptx" ? (
+                          <span className="text-xs font-black">PPT</span>
+                        ) : getFileType(task.image_url) === "docx" ? (
+                          <span className="text-xs font-black">DOC</span>
+                        ) : (
+                          <File size={18} />
+                        )}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold text-text-primary truncate">
+                          {task.image_url.split("/").pop().split("?")[0]}
+                        </span>
+                        <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">
+                          {getFileType(task.image_url)} File
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <a
+                        href={task.image_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2.5 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-white rounded-xl transition-all"
+                        title="Open in Browser"
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                      <a
+                        href={task.image_url}
+                        download
+                        className="p-2.5 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-white rounded-xl transition-all"
+                        title="Download File"
+                      >
+                        <Download size={14} />
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Description */}
             <div className="flex flex-col gap-3">
