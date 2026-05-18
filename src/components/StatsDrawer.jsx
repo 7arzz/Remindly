@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { X, BarChart3, TrendingUp, CheckCircle, Clock } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -10,7 +11,7 @@ const CustomTooltip = ({ active, payload }) => {
     return (
       <div className="bg-bg-card border border-border-primary p-3 rounded-xl shadow-xl z-50">
         <p className="text-xs font-bold text-text-primary mb-1">{data.taskName}</p>
-        <p className={`text-[10px] font-black uppercase tracking-widest ${data.status === 'Selesai' ? 'text-accent-primary' : 'text-rose-400'}`}>
+        <p className={`text-[10px] font-black uppercase tracking-widest ${data.status === 'Selesai' ? 'text-accent-primary' : 'text-rose-500'}`}>
           {data.status} (Score: {data.score})
         </p>
       </div>
@@ -22,6 +23,19 @@ const CustomTooltip = ({ active, payload }) => {
 function StatsDrawer({ isOpen, onClose, tasks, history }) {
   const completedToday = tasks.filter((t) => t.done).length;
   const totalTasks = tasks.length;
+  
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const checkDark = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+    checkDark();
+
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   // Calculate chart data: naik jika selesai, turun jika tidak selesai
   const sortedTasks = [...tasks].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -49,6 +63,13 @@ function StatsDrawer({ isOpen, onClose, tasks, history }) {
     });
   });
 
+  // Dynamic Theme Colors for Recharts
+  const gridColor = isDark ? "#233554" : "#e2eaf4";
+  const axisColor = isDark ? "#8892b0" : "#475569";
+  const lineColor = isDark ? "#64ffda" : "#2563eb";
+  const dotFill = isDark ? "#112240" : "#ffffff";
+  const dotStroke = isDark ? "#64ffda" : "#2563eb";
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -68,7 +89,7 @@ function StatsDrawer({ isOpen, onClose, tasks, history }) {
             className="fixed top-0 right-0 bottom-0 w-full max-w-sm bg-bg-card border-l border-border-primary p-8 z-[151] flex flex-col gap-8 shadow-2xl"
           >
             <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
+               <div className="flex items-center gap-3">
                 <div className="p-2 bg-accent-primary/10 rounded-lg text-accent-primary">
                   <BarChart3 size={20} />
                 </div>
@@ -108,17 +129,17 @@ function StatsDrawer({ isOpen, onClose, tasks, history }) {
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                      <XAxis dataKey="name" stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+                      <XAxis dataKey="name" stroke={axisColor} fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis stroke={axisColor} fontSize={10} tickLine={false} axisLine={false} />
                       <Tooltip content={<CustomTooltip />} />
                       <Line 
                         type="monotone" 
                         dataKey="score" 
-                        stroke="#64ffda" 
+                        stroke={lineColor} 
                         strokeWidth={3} 
-                        dot={{ r: 4, fill: '#112240', stroke: '#64ffda', strokeWidth: 2 }} 
-                        activeDot={{ r: 6, fill: '#64ffda' }}
+                        dot={{ r: 4, fill: dotFill, stroke: dotStroke, strokeWidth: 2 }} 
+                        activeDot={{ r: 6, fill: lineColor }}
                         animationDuration={1500}
                       />
                     </LineChart>

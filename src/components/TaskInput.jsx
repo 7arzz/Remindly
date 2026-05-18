@@ -165,12 +165,12 @@ function TaskInput({ addTask }) {
   };
 
   return (
-    <div className="flex flex-col gap-5 p-5 sm:p-6 bg-bg-card/20">
+    <div className="premium-task-card">
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1 group">
           <Type
             size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent-primary transition-colors"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent-primary transition-colors z-10"
           />
           <input
             type="text"
@@ -178,14 +178,14 @@ function TaskInput({ addTask }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={loading}
-            className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3.5 pl-11 pr-14 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all shadow-inner disabled:opacity-50"
+            className="premium-input"
           />
           <button
             type="button"
             onClick={handleAIScan}
             disabled={isParsing || loading}
             title="Parse with Gemini AI"
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-white transition-all disabled:opacity-50"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-accent-primary/10 text-accent-primary hover:bg-accent-primary hover:text-bg-primary transition-all disabled:opacity-50 z-10"
           >
             {isParsing ? (
               <Loader2 size={16} className="animate-spin" />
@@ -198,14 +198,14 @@ function TaskInput({ addTask }) {
         <div className="relative w-full sm:w-56 group">
           <Calendar
             size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent-primary transition-colors"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent-primary transition-colors z-10"
           />
           <input
             type="datetime-local"
             value={time}
             onChange={(e) => setTime(e.target.value)}
             disabled={loading}
-            className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3.5 pl-11 pr-4 text-text-primary focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all shadow-inner disabled:opacity-50"
+            className="premium-input premium-input-datetime"
           />
         </div>
       </div>
@@ -214,10 +214,10 @@ function TaskInput({ addTask }) {
         type="button"
         onClick={() => setShowDetail(!showDetail)}
         disabled={loading}
-        className="flex items-center gap-2 text-sm text-text-secondary hover:text-accent-primary transition-colors w-fit px-1 disabled:opacity-50"
+        className="premium-accordion-trigger mt-1 disabled:opacity-50"
       >
         <FileText size={16} />
-        <span className="font-medium">Add detail (optional)</span>
+        <span className="font-semibold">Add detail (optional)</span>
         {showDetail ? (
           <ChevronUp size={14} className="opacity-50" />
         ) : (
@@ -226,10 +226,10 @@ function TaskInput({ addTask }) {
       </button>
 
       {showDetail && (
-        <div className="relative animate-in fade-in slide-in-from-top-2 duration-300 group">
+        <div className="relative animate-in fade-in slide-in-from-top-2 duration-300 group mt-2">
           <FileText
             size={18}
-            className="absolute left-4 top-4 text-text-muted group-focus-within:text-accent-primary transition-colors"
+            className="absolute left-4 top-4 text-text-muted group-focus-within:text-accent-primary transition-colors z-10"
           />
           <textarea
             placeholder="Add some notes or details..."
@@ -237,21 +237,21 @@ function TaskInput({ addTask }) {
             onChange={(e) => setDetail(e.target.value)}
             disabled={loading}
             rows={3}
-            className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3.5 pl-11 pr-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all shadow-inner resize-none disabled:opacity-50"
+            className="premium-input pl-11 pt-3.5 resize-none"
           />
         </div>
       )}
 
-      <div className="flex flex-wrap gap-4 items-center">
+      <div className="flex flex-wrap gap-4 items-center mt-2">
         <label
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed transition-all cursor-pointer ${
             imagePreview
-              ? "border-accent-primary/50 bg-accent-primary/5 text-accent-primary"
-              : "border-border-primary/50 text-text-secondary hover:border-accent-primary/50 hover:text-accent-primary"
+              ? "border-accent-primary bg-accent-primary/10 text-accent-primary"
+              : "border-border-primary/50 text-text-secondary hover:border-accent-primary hover:bg-accent-glow"
           } ${loading ? "opacity-50 pointer-events-none" : ""}`}
         >
           <ImageIcon size={18} />
-          <span className="text-sm font-medium">
+          <span className="text-sm font-semibold">
             {imagePreview ? "Change Photo" : "Add Photo"}
           </span>
           <input
@@ -285,10 +285,10 @@ function TaskInput({ addTask }) {
         )}
 
         {/* Reminder Selector */}
-        <div className="relative group flex-1 sm:flex-none min-w-[150px]">
+        <div className="relative group flex-1 sm:flex-none min-w-[170px]">
           <Bell
             size={18}
-            className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${
+            className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors z-10 ${
               reminderOffset > 0 ? "text-accent-primary" : "text-text-muted"
             }`}
           />
@@ -296,7 +296,7 @@ function TaskInput({ addTask }) {
             value={reminderOffset}
             onChange={(e) => setReminderOffset(parseInt(e.target.value))}
             disabled={loading}
-            className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-2.5 pl-11 pr-4 text-sm text-text-primary appearance-none focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all shadow-inner disabled:opacity-50"
+            className="premium-select"
           >
             <option value={0}>No Reminder</option>
             <option value={30}>30 Minutes Before</option>
@@ -306,27 +306,21 @@ function TaskInput({ addTask }) {
           </select>
           <ChevronDown
             size={14}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none z-10"
           />
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
-        <div className="flex bg-bg-secondary/80 p-1 rounded-xl border border-border-primary/50 flex-1 sm:flex-none">
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center mt-3">
+        <div className="priority-pill-container flex-1 sm:flex-none">
           {["low", "medium", "high"].map((p) => (
             <button
               key={p}
               type="button"
               disabled={loading}
-              className={`flex-1 sm:px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
-                priority === p
-                  ? p === "low"
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-lg shadow-emerald-500/10"
-                    : p === "medium"
-                      ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-lg shadow-amber-500/10"
-                      : "bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-lg shadow-rose-500/10"
-                  : "text-text-muted hover:text-text-secondary"
-              } disabled:opacity-30`}
+              className={`priority-pill priority-pill-${p} ${
+                priority === p ? "active" : "text-text-muted"
+              }`}
               onClick={() => setPriority(p)}
             >
               {p}
@@ -335,7 +329,7 @@ function TaskInput({ addTask }) {
         </div>
 
         <button
-          className={`btn-primary flex-1 ${!text || !time || loading ? "opacity-50 cursor-not-allowed scale-100" : ""}`}
+          className={`premium-btn-submit flex-1 ${!text || !time || loading ? "opacity-50 cursor-not-allowed scale-100" : ""}`}
           onClick={handleAdd}
           disabled={!text || !time || loading}
         >

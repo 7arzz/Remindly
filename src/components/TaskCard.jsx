@@ -31,9 +31,9 @@ function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick, onEditCl
             'bg-emerald-500'
           }`} />
           <span className={`text-[10px] font-black uppercase tracking-widest ${
-            task.priority === 'high' ? 'text-rose-400' :
-            task.priority === 'medium' ? 'text-amber-400' :
-            'text-emerald-400'
+            task.priority === 'high' ? 'priority-tag-high' :
+            task.priority === 'medium' ? 'priority-tag-medium' :
+            'priority-tag-low'
           }`}>
             {task.priority}
           </span>
