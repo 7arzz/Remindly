@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Send, Trash2, User as UserIcon, X, Loader2 } from "lucide-react";
+import { Send, Trash2, User as UserIcon, X, Loader2, Pencil } from "lucide-react";
 
-function Answer({ answers = [], onAddAnswer, onDeleteAnswer, currentUser }) {
+function Answer({ answers = [], onAddAnswer, onDeleteAnswer, onEditAnswer, currentUser }) {
   const [newAnswer, setNewAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
 
   const handleAdd = async () => {
     if (!newAnswer.trim()) return;
@@ -16,6 +18,28 @@ function Answer({ answers = [], onAddAnswer, onDeleteAnswer, currentUser }) {
       alert("Failed to post answer. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const startEditing = (id, text) => {
+    setEditingId(id);
+    setEditText(text);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditText("");
+  };
+
+  const handleSave = async (id) => {
+    if (!editText.trim()) return;
+    try {
+      await onEditAnswer(id, editText.trim());
+      setEditingId(null);
+      setEditText("");
+    } catch (error) {
+      console.error("Error updating answer:", error);
+      alert("Failed to update answer. Please try again.");
     }
   };
 
@@ -61,6 +85,37 @@ function Answer({ answers = [], onAddAnswer, onDeleteAnswer, currentUser }) {
             const userEmailVal = ans.userEmail || ans.user_email || "";
             const createdAtVal = ans.createdAt || ans.created_at || new Date().toISOString();
             
+            if (editingId === ans.id) {
+              return (
+                <div key={ans.id} className="bg-bg-card/60 border border-accent-primary/40 rounded-2xl p-5 shadow-lg flex flex-col gap-4 fadeIn">
+                  <div className="flex items-center gap-2 text-xs font-bold text-accent-primary">
+                    <UserIcon size={12} />
+                    <span>Edit Jawaban Anda</span>
+                  </div>
+                  <textarea
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    className="w-full bg-bg-secondary/40 border border-border-primary/50 rounded-xl p-3 text-text-primary text-sm sm:text-base focus:ring-0 focus:border-accent-primary resize-none min-h-[85px] outline-none"
+                  />
+                  <div className="flex justify-end gap-2 pt-2 border-t border-border-primary/20">
+                    <button
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-all"
+                      onClick={cancelEditing}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-accent-primary text-white hover:bg-accent-primary/90 transition-all flex items-center gap-1.5"
+                      onClick={() => handleSave(ans.id)}
+                      disabled={!editText.trim()}
+                    >
+                      Simpan
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div key={ans.id} className="group relative bg-bg-card/40 border border-border-primary/40 rounded-2xl p-5 hover:border-accent-primary/30 transition-all">
                 <div className="flex items-center gap-2 text-xs font-bold text-accent-primary mb-3">
@@ -85,13 +140,26 @@ function Answer({ answers = [], onAddAnswer, onDeleteAnswer, currentUser }) {
                   </div>
                   
                   {userEmailVal === currentUser.email && (
-                    <button
-                      className="p-1.5 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
-                      onClick={() => onDeleteAnswer(ans.id)}
-                      title="Delete your answer"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <button
+                        className="p-1.5 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all"
+                        onClick={() => startEditing(ans.id, ans.text)}
+                        title="Edit your answer"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        className="p-1.5 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                        onClick={() => {
+                          if (confirm("Apakah Anda yakin ingin menghapus komentar ini?")) {
+                            onDeleteAnswer(ans.id);
+                          }
+                        }}
+                        title="Delete your answer"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

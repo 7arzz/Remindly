@@ -35,6 +35,22 @@ function Detail({ task, onClose, updateTask, currentUser, onDelete }) {
     });
   };
 
+  const handleEditAnswer = (answerId, newText) => {
+    const currentAnswers = task.answers || [];
+    updateTask(task.id, {
+      answers: currentAnswers.map((a) =>
+        a.id === answerId
+          ? {
+              ...a,
+              text: newText,
+              updated_at: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          : a
+      ),
+    });
+  };
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
@@ -158,6 +174,7 @@ function Detail({ task, onClose, updateTask, currentUser, onDelete }) {
                   answers={task.answers || []}
                   onAddAnswer={handleAddAnswer}
                   onDeleteAnswer={handleDeleteAnswer}
+                  onEditAnswer={handleEditAnswer}
                   currentUser={currentUser}
                 />
               </div>
