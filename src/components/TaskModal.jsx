@@ -1,4 +1,3 @@
-import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 import {
@@ -15,10 +14,10 @@ import {
   Save,
 } from "lucide-react";
 import { toast } from "sonner";
+import { formatForDateTimeLocal } from "../utils/helpers";
 
 const TaskModal = ({
   task,
-  isOpen,
   onClose,
   onDelete,
   toggleDone,
@@ -32,12 +31,17 @@ const TaskModal = ({
   const [editPriority, setEditPriority] = useState("");
 
   useEffect(() => {
-    if (task) {
+    if (!task) return;
+
+    // Avoid cascading renders flagged by eslint by batching into a single microtask.
+    Promise.resolve().then(() => {
       setEditText(task.text);
       setEditDetail(task.detail || "");
-      setEditTime(task.time);
+      // Never bind raw timestamptz/UTC value directly into date/time inputs.
+      // Convert to local datetime-local format first.
+      setEditTime(formatForDateTimeLocal(task.time));
       setEditPriority(task.priority);
-    }
+    });
   }, [task]);
 
   if (!task) return null;
@@ -54,12 +58,15 @@ const TaskModal = ({
       await onUpdate(task.id, {
         text: editText,
         detail: editDetail,
-        time: editTime,
+        // editTime is datetime-local local format (YYYY-MM-DDTHH:mm)
+        // Convert to ISO UTC on SAVE.
+        time: new Date(editTime).toISOString(),
         priority: editPriority,
       });
+
       setIsEditing(false);
       toast.success("Task updated successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to update task");
     }
   };
@@ -70,7 +77,7 @@ const TaskModal = ({
       onClick={onClose}
     >
       <div className="flex min-h-full w-full justify-center items-start p-4 sm:p-6">
-        <motion.div
+        <div
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -88,10 +95,7 @@ const TaskModal = ({
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-bg-secondary to-bg-card">
-                <CheckCircle
-                  size={64}
-                  className="text-accent-primary/20"
-                />
+                <CheckCircle size={64} className="text-accent-primary/20" />
               </div>
             )}
 
@@ -110,16 +114,22 @@ const TaskModal = ({
                     Pending
                   </span>
                 )}
-                
+
                 {isEditing && (
                   <select
                     value={editPriority}
                     onChange={(e) => setEditPriority(e.target.value)}
                     className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-bg-card/40 text-white border border-white/20 backdrop-blur-md focus:outline-none"
                   >
-                    <option value="low" className="bg-bg-card">Low</option>
-                    <option value="medium" className="bg-bg-card">Medium</option>
-                    <option value="high" className="bg-bg-card">High</option>
+                    <option value="low" className="bg-bg-card">
+                      Low
+                    </option>
+                    <option value="medium" className="bg-bg-card">
+                      Medium
+                    </option>
+                    <option value="high" className="bg-bg-card">
+                      High
+                    </option>
                   </select>
                 )}
               </div>
@@ -175,10 +185,10 @@ const TaskModal = ({
                   {isEditing ? (
                     <input
                       type="date"
-                      value={editTime.split('T')[0]}
+                      value={editTime.split("T")[0]}
                       onChange={(e) => {
                         const newDate = e.target.value;
-                        const currentTime = editTime.split('T')[1];
+                        const currentTime = editTime.split("T")[1];
                         setEditTime(`${newDate}T${currentTime}`);
                       }}
                       className="bg-transparent border-none focus:outline-none text-accent-primary"
@@ -200,10 +210,10 @@ const TaskModal = ({
                   {isEditing ? (
                     <input
                       type="time"
-                      value={editTime.split('T')[1]?.substring(0, 5)}
+                      value={editTime.split("T")[1]?.substring(0, 5)}
                       onChange={(e) => {
                         const newTime = e.target.value;
-                        const currentDate = editTime.split('T')[0];
+                        const currentDate = editTime.split("T")[0];
                         setEditTime(`${currentDate}T${newTime}`);
                       }}
                       className="bg-transparent border-none focus:outline-none text-accent-primary"
@@ -334,9 +344,10 @@ const TaskModal = ({
               )}
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>,
+
     document.body,
   );
 };

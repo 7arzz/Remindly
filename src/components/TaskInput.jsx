@@ -44,7 +44,9 @@ function TaskInput({ addTask }) {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
-      const now = new Date().toLocaleString("en-US", { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+      const now = new Date().toLocaleString("en-US", {
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
       const prompt = `
         Tolong analisis kalimat tugas ini: "${text}"
         Waktu sekarang adalah: ${now}
@@ -58,14 +60,14 @@ function TaskInput({ addTask }) {
         }
 
         Ketentuan:
-        1. Jika tanggal tidak disebutkan, gunakan tanggal hari ini (${new Date().toISOString().split('T')[0]}).
+        1. Jika tanggal tidak disebutkan, gunakan tanggal hari ini (${new Date().toISOString().split("T")[0]}).
         2. Berikan hanya JSON, jangan ada teks penjelasan lain.
       `;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const responseText = response.text();
-      
+
       // Extract JSON more robustly
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -132,7 +134,18 @@ function TaskInput({ addTask }) {
       }
 
       // 2. Add Task
-      const success = await addTask(text, time, priority, detail, imageUrl, reminderOffset);
+      // time is stored in datetime-local local format (YYYY-MM-DDTHH:mm).
+      // Supabase timestamptz expects UTC ISO, so convert at SAVE.
+      const timeIsoUtc = new Date(time).toISOString();
+      const success = await addTask(
+        text,
+        timeIsoUtc,
+        priority,
+        detail,
+        imageUrl,
+        reminderOffset,
+      );
+
       if (success !== false) {
         setText("");
         setTime("");
@@ -291,7 +304,10 @@ function TaskInput({ addTask }) {
             <option value={120}>2 Hours Before</option>
             <option value={1440}>1 Day Before</option>
           </select>
-          <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+          <ChevronDown
+            size={14}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+          />
         </div>
       </div>
 
