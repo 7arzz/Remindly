@@ -85,19 +85,21 @@ export const registerServiceWorker = async () => {
   }
 
   try {
-    // In production, Vite PWA generates 'sw.js' which imports our firebase script.
-    // In development, Vite PWA is disabled, so we directly register the firebase script.
-    const swUrl = import.meta.env.MODE === "production" ? "/sw.js" : "/firebase-messaging-sw.js";
-    
-    console.log(`[FCM] Attempting to register Service Worker at: ${swUrl}`);
+    const swUrl = "/firebase-messaging-sw.js";
+
+    console.log("[FCM] Registering Firebase Messaging SW...");
+    console.log(`[FCM] Using SW path: ${swUrl}`);
+
     const reg = await navigator.serviceWorker.register(swUrl, {
       scope: "/",
     });
-    console.log(`[FCM] Service Worker registered (${swUrl}):`, reg.scope);
-    
-    // Wait for it to become ready
+
+    console.log("[FCM] SW registration success");
+    console.log("[FCM] SW registration scope:", reg?.scope);
+
     const readyReg = await navigator.serviceWorker.ready;
-    console.log(`[FCM] Service Worker is ready!`, readyReg);
+    console.log("[FCM] SW ready");
+
     return readyReg;
   } catch (err) {
     console.error("[FCM] Service Worker registration failed:", err);
@@ -143,7 +145,9 @@ export const requestNotificationPermission = async () => {
   }
 
   if (result.permission !== "granted") {
-    console.warn(`[FCM] Notification permission was not granted (status: ${result.permission})`);
+    console.warn(
+      `[FCM] Notification permission was not granted (status: ${result.permission})`,
+    );
     result.error = "Notification permission was denied.";
     return result;
   }
@@ -152,7 +156,9 @@ export const requestNotificationPermission = async () => {
   console.log("[FCM] Registering Service Worker for token retrieval...");
   const swReg = await registerServiceWorker();
   if (!swReg) {
-    console.error("[FCM] Failed to register service worker during token retrieval.");
+    console.error(
+      "[FCM] Failed to register service worker during token retrieval.",
+    );
     result.error = "Failed to register service worker.";
     return result;
   }
@@ -167,18 +173,22 @@ export const requestNotificationPermission = async () => {
 
   try {
     const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-    console.log(`[FCM] Calling getToken with VAPID key: ${vapidKey ? "present" : "MISSING"}`);
-    
+    console.log(
+      `[FCM] Calling getToken with VAPID key: ${vapidKey ? "present" : "MISSING"}`,
+    );
+
     const token = await getToken(messaging, {
       vapidKey: vapidKey,
       serviceWorkerRegistration: swReg,
     });
 
     if (token) {
-      console.log("[FCM] Token obtained successfully:", token.slice(0, 20) + "…");
+      console.log("[FCM] Token obtained");
       result.token = token;
     } else {
-      console.error("[FCM] Could not obtain FCM token. Ensure VAPID key is correct.");
+      console.error(
+        "[FCM] Could not obtain FCM token. Ensure VAPID key is correct.",
+      );
       result.error = "Could not obtain FCM token. Ensure VAPID key is correct.";
     }
   } catch (err) {
@@ -205,18 +215,46 @@ export const onForegroundMessage = async (callback) => {
   }
 
   console.log("[FCM] Foreground listener attached.");
-  return onMessage(messaging, (payload) => {
-    console.log("[FCM] Foreground message received:", payload);
-    
-    // STEP 6: If Firebase foreground payload arrives, show notification manually
-    // Since Firebase doesn't automatically show notification in foreground, we force it
-    const title = payload?.data?.title ?? payload?.notification?.title ?? "Remindly";
-    const body  = payload?.data?.body  ?? payload?.notification?.body  ?? "";
-    
-    console.log(`[FCM] Forcing local notification for foreground message: ${title}`);
-    sendLocalNotification(title, body, payload.data || {});
-    
-    callback(payload);
+  return onMessage(messaging, async (payload) => {
+    try {
+      console.log("[FCM] Foreground message received:", payload);
+
+      // Required fields contract (Task 9/12)
+      const title =
+        payload?.data?.title ?? payload?.notification?.title ?? "Remindly";
+
+      const body = payload?.data?.body ?? payload?.notification?.body ?? "";
+
+      const url = payload?.data?.url ?? "/";
+      const tag =
+        payload?.data?.tag ??
+        payload?.data?.task_id ??
+        `remindly-${Date.now()}`;
+
+      const extracted = { title, body, url, tag };
+      console.log("[FCM] Foreground extracted fields:", extracted);
+
+      // Force native notification via Service Worker
+      console.log(
+        "[FCM] Forcing local notification via reg.showNotification (foreground).",
+      );
+
+      await sendLocalNotification(title, body, {
+        ...(payload.data || {}),
+        url,
+        tag,
+        // keep tag/url contract explicit for SW options.data
+        data: { url },
+      });
+
+      console.log(
+        "[FCM] Foreground notification displayed (reg.showNotification resolved).",
+      );
+      callback(payload);
+    } catch (err) {
+      console.error("[FCM] Foreground handler error:", err);
+      callback(payload);
+    }
   });
 };
 
@@ -232,11 +270,27 @@ export const sendLocalNotification = async (title, body, options = {}) => {
     return;
   }
 
+  const url = String(options?.url ?? options?.data?.url ?? "/");
+  const tag = String(
+    options?.tag ??
+      options?.task_id ??
+      options?.data?.tag ??
+      `remindly-${Date.now()}`,
+  );
+
+  // Build options without duplicate keys (eslint clean)
   const notificationOptions = {
-    body,
+    body: String(body ?? ""),
     icon: options.icon || "/bell.png",
     badge: options.badge || "/favicon.svg",
-    tag: options.tag || `remindly-${Date.now()}`,
+    tag,
+    vibrate: [200, 100, 200],
+    timestamp: Date.now(),
+    data: {
+      url,
+      tag,
+      ...(options.data && typeof options.data === "object" ? options.data : {}),
+    },
     ...options,
   };
 
@@ -244,19 +298,35 @@ export const sendLocalNotification = async (title, body, options = {}) => {
     if ("serviceWorker" in navigator) {
       const reg = await navigator.serviceWorker.ready;
       if (reg && reg.showNotification) {
-        console.log("[FCM] Showing local notification via Service Worker");
-        await reg.showNotification(title, notificationOptions);
+        console.log("[FCM] Showing local notification via Service Worker", {
+          title,
+          tag,
+          url,
+        });
+        await reg.showNotification(
+          String(title ?? "Remindly"),
+          notificationOptions,
+        );
         return;
       }
     }
   } catch (err) {
-    console.warn("[FCM] SW showNotification failed, falling back to window.Notification:", err);
+    console.warn(
+      "[FCM] SW showNotification failed, falling back to window.Notification:",
+      err,
+    );
   }
 
   try {
-    console.log("[FCM] Showing local notification via window.Notification");
-    const n = new Notification(title, notificationOptions);
-    // Auto-close after 8 seconds
+    console.log("[FCM] Showing local notification via window.Notification", {
+      title,
+      tag,
+      url,
+    });
+    const n = new Notification(
+      String(title ?? "Remindly"),
+      notificationOptions,
+    );
     setTimeout(() => n.close(), 8000);
     return n;
   } catch (err) {

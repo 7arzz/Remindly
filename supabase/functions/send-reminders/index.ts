@@ -146,7 +146,7 @@ async function sendFcmNotification(
   fcmToken: string,
   title: string,
   body: string,
-  data: Record<string, string> = {}
+  data: Record<string, string> = {},
 ): Promise<{ success: boolean; error?: string }> {
   const projectId = Deno.env.get("FIREBASE_PROJECT_ID");
   if (!projectId) throw new Error("FIREBASE_PROJECT_ID env var is not set.");
@@ -158,22 +158,54 @@ async function sendFcmNotification(
     return { success: false, error: `Auth error: ${(err as Error).message}` };
   }
 
-  // IMPORTANT: For reliable Mobile Web Push (PWA/Android), we use a "Data-Only" payload.
-  // We MUST NOT include the root "notification" object. If we do, Chrome Android intercepts
-  // the push and ignores our firebase-messaging-sw.js, which often results in silent failures.
+  // Enforce required fields as strings for webpush reliability
+  const safeTitle = String(title ?? "Remindly");
+  const safeBody = String(body ?? "");
+  const safeUrl = String(data?.url ?? "/");
+  const safeTag = String(data?.tag ?? data?.task_id ?? "remindly-task");
+  const safeTaskId = String(data?.task_id ?? "");
+
+  const dataPayload: Record<string, string> = {
+    title: safeTitle,
+    body: safeBody,
+    url: safeUrl,
+    tag: safeTag,
+    task_id: safeTaskId,
+    ...Object.fromEntries(Object.entries(data ?? {}).map(([k, v]) => [k, String(v)])),
+  };
+
+  // FULL payload for WEB PUSH reliability:
+  // Include notification + data + webpush + android priority high.
+  // Android requires string data fields and vibrate/priority/tag for good behavior.
   const message = {
     message: {
       token: fcmToken,
-      data: {
-        title: title,
-        body: body,
-        url: "/",
-        ...data
+      notification: {
+        title: safeTitle,
+        body: safeBody,
+      },
+      data: dataPayload,
+      webpush: {
+        headers: {
+          Urgency: "high",
+        },
+      },
+      android: {
+        priority: "high",
       },
     },
   };
 
   const url = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+
+  console.log("[send-reminders] 📦 FCM request:");
+  console.log("[send-reminders] projectId:", projectId);
+  console.log(
+    "[send-reminders] fcmToken:",
+    `${fcmToken.slice(0, 8)}…${fcmToken.slice(-6)} (len=${fcmToken.length})`,
+  );
+  console.log("[send-reminders] FCM endpoint:", url);
+  console.log("[send-reminders] FCM payload (full):", JSON.stringify(message));
 
   const res = await fetch(url, {
     method: "POST",
@@ -184,13 +216,17 @@ async function sendFcmNotification(
     body: JSON.stringify(message),
   });
 
+  const resBody = await res.text();
+
+  console.log("[send-reminders] 🔥 Firebase response status:", res.status);
+  // Log full body for audit
+  console.log("[send-reminders] 🔥 Firebase response body:", resBody);
+
   if (!res.ok) {
-    const errBody = await res.text();
-    // Handle token-not-registered gracefully
-    if (res.status === 404 || errBody.includes("UNREGISTERED")) {
+    if (res.status === 404 || resBody.includes("UNREGISTERED")) {
       return { success: false, error: "UNREGISTERED" };
     }
-    return { success: false, error: `FCM ${res.status}: ${errBody}` };
+    return { success: false, error: `FCM ${res.status}: ${resBody}` };
   }
 
   return { success: true };
@@ -333,9 +369,16 @@ Deno.serve(async (req: Request) => {
         title,
         body,
         {
-          task_id:   task.id,
+          // Required by SW + payload contract
+          title: title,
+          body: body,
+          url: "/",
+          tag: `${task.id}:${threshold.field}`,
+          task_id: task.id,
+
+          // Extra
           threshold: threshold.field,
-          deadline:  task.time,
+          deadline: task.time,
         }
       );
 

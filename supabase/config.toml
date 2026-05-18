@@ -414,3 +414,9 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/send-reminders/deno.json"
 entrypoint = "./functions/send-reminders/index.ts"
+
+[functions.send-test-fcm]
+enabled = true
+verify_jwt = false
+import_map = "./functions/send-reminders/deno.json"
+entrypoint = "./functions/send-test-fcm/index.ts"

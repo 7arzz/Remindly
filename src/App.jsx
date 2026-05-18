@@ -159,7 +159,6 @@ function App() {
     support: notifSupport,
     // eslint-disable-next-line no-unused-vars
     debugLog,
-    // eslint-disable-next-line no-unused-vars
     fcmToken,
     requestPermission: requestNotifPermission,
   } = useNotifications(user, tasks);
@@ -615,22 +614,33 @@ function App() {
             <LogIn size={20} />
             Sign in with Google
           </button>
-          
+
           <button
             onClick={async () => {
-              console.log("[Test] Test Notification button clicked (unauthenticated)");
-              console.log("[Test] Notification.permission:", Notification.permission);
-              console.log("[Test] serviceWorker in navigator:", "serviceWorker" in navigator);
-              
+              console.log(
+                "[Test] Test Notification button clicked (unauthenticated)",
+              );
+              console.log(
+                "[Test] Notification.permission:",
+                Notification.permission,
+              );
+              console.log(
+                "[Test] serviceWorker in navigator:",
+                "serviceWorker" in navigator,
+              );
+
               if ("serviceWorker" in navigator) {
                 const reg = await navigator.serviceWorker.getRegistration();
                 console.log("[Test] serviceWorker registration:", reg);
                 if (reg) {
                   console.log("[Test] active SW state:", reg?.active?.state);
                 } else {
-                  console.log("[Test] No SW registered yet, registering now...");
+                  console.log(
+                    "[Test] No SW registered yet, registering now...",
+                  );
                   try {
-                    const { registerServiceWorker } = await import("./lib/firebase.js");
+                    const { registerServiceWorker } =
+                      await import("./lib/firebase.js");
                     const newReg = await registerServiceWorker();
                     console.log("[Test] Newly registered SW:", newReg);
                   } catch (err) {
@@ -638,17 +648,21 @@ function App() {
                   }
                 }
               }
-              
+
               const { checkBrowserSupport } = await import("./lib/firebase.js");
               console.log("[Test] browser support:", checkBrowserSupport());
-              
+
               if (Notification.permission === "default") {
                 console.log("[Test] Requesting permission...");
                 await Notification.requestPermission();
               }
-              
-              const { sendLocalNotification } = await import("./lib/firebase.js");
-              sendLocalNotification("Test Notification", "This is a test notification from the login button click.");
+
+              const { sendLocalNotification } =
+                await import("./lib/firebase.js");
+              sendLocalNotification(
+                "Test Notification",
+                "This is a test notification from the login button click.",
+              );
             }}
             className="text-xs text-text-muted hover:text-accent-primary transition-colors underline cursor-pointer"
           >
@@ -738,27 +752,66 @@ function App() {
           >
             Debug FCM
           </button>
+
           <button
             onClick={async () => {
-              console.log("[Test] Test Notification button clicked");
-              console.log("[Test] Notification.permission:", Notification.permission);
-              console.log("[Test] serviceWorker in navigator:", "serviceWorker" in navigator);
-              
-              if ("serviceWorker" in navigator) {
-                const reg = await navigator.serviceWorker.getRegistration();
-                console.log("[Test] serviceWorker registration:", reg);
-                console.log("[Test] active SW state:", reg?.active?.state);
+              try {
+                if (!fcmToken) {
+                  toast.error(
+                    "FCM token not ready yet. Enable notifications first.",
+                  );
+                  return;
+                }
+
+                const supabaseUrl = "https://wdydmrdcxuhtcqqckcmq.supabase.co";
+                const endpoint = `${supabaseUrl}/functions/v1/send-test-fcm`;
+
+                toast.loading("Sending Test FCM…", { id: "send-test-fcm" });
+
+                const res = await fetch(endpoint, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    token: fcmToken,
+                    title: "⏰ Remindly FCM Test",
+                    body: "FCM test message (foreground/background reliability check).",
+                    url: "/",
+                    tag: `remindly-test:${Date.now()}`,
+                    task_id: "manual-test",
+                  }),
+                });
+
+                const text = await res.text();
+                let json = null;
+                try {
+                  json = JSON.parse(text);
+                } catch {
+                  json = { raw: text };
+                }
+
+                console.log("[Test FCM] response:", {
+                  status: res.status,
+                  json,
+                });
+
+                if (!res.ok || json?.ok === false) {
+                  toast.error("FCM test failed. Check console for details.", {
+                    id: "send-test-fcm",
+                  });
+                  return;
+                }
+
+                toast.success("FCM test push sent.", { id: "send-test-fcm" });
+              } catch (err) {
+                console.error("[Test FCM] error:", err);
+                toast.error("FCM test error. Check console.", {
+                  id: "send-test-fcm",
+                });
               }
-              
-              const { checkBrowserSupport } = await import("./lib/firebase.js");
-              console.log("[Test] browser support:", checkBrowserSupport());
-              
-              const { sendLocalNotification } = await import("./lib/firebase.js");
-              sendLocalNotification("Test Notification", "This is a test notification from the button click.");
             }}
             className="text-xs text-text-muted/50 hover:text-text-primary px-5 pb-4 text-left"
           >
-            Test Notification
+            Send Test FCM
           </button>
         </div>
       </aside>
@@ -804,7 +857,10 @@ function App() {
           </div>
 
           {/* Mobile fallback target for tutorial */}
-          <span id="mobile-nav-stats-hint" className="lg:hidden absolute right-5 top-1/2 -translate-y-1/2 w-10 h-10 pointer-events-none opacity-0" />
+          <span
+            id="mobile-nav-stats-hint"
+            className="lg:hidden absolute right-5 top-1/2 -translate-y-1/2 w-10 h-10 pointer-events-none opacity-0"
+          />
 
           {/* Mobile: Hamburger button */}
           <button
@@ -844,7 +900,9 @@ function App() {
 
                 {/* Menu items */}
                 <div className="mobile-menu-item flex justify-between items-center px-4 py-2 border-b border-border-primary/20">
-                  <span className="text-sm font-bold text-text-secondary">Switch Theme</span>
+                  <span className="text-sm font-bold text-text-secondary">
+                    Switch Theme
+                  </span>
                   <ThemeToggle />
                 </div>
                 <button
