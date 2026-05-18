@@ -12,9 +12,12 @@ import {
   Bell,
   Pencil,
   Save,
+  Send,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatForDateTimeLocal } from "../utils/helpers";
+import { supabase } from "../supabase";
 
 const TaskModal = ({
   task,
@@ -29,6 +32,105 @@ const TaskModal = ({
   const [editDetail, setEditDetail] = useState("");
   const [editTime, setEditTime] = useState("");
   const [editPriority, setEditPriority] = useState("");
+
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [isPosting, setIsPosting] = useState(false);
+  const [isCommentsLoading, setIsCommentsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!task) return;
+
+    setIsCommentsLoading(true);
+    const fetchComments = async () => {
+      const { data, error } = await supabase
+        .from("task_comments")
+        .select("*")
+        .eq("task_id", task.id)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching comments:", error);
+      } else {
+        setComments(data || []);
+      }
+      setIsCommentsLoading(false);
+    };
+
+    fetchComments();
+
+    const channel = supabase
+      .channel(`task_comments_${task.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "task_comments",
+          filter: `task_id=eq.${task.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setComments((prev) => {
+              if (prev.some((c) => c.id === payload.new.id)) return prev;
+              return [...prev, payload.new];
+            });
+          } else if (payload.eventType === "DELETE") {
+            setComments((prev) => prev.filter((c) => c.id !== payload.old.id));
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [task]);
+
+  const handlePostComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || isPosting) return;
+
+    setIsPosting(true);
+    try {
+      const commentData = {
+        task_id: task.id,
+        user_id: currentUser.id,
+        user_name:
+          currentUser.user_metadata?.full_name ||
+          currentUser.email.split("@")[0],
+        user_email: currentUser.email,
+        content: newComment.trim(),
+      };
+
+      const { error } = await supabase
+        .from("task_comments")
+        .insert([commentData]);
+
+      if (error) throw error;
+      setNewComment("");
+    } catch (error) {
+      console.error("Error posting comment:", error);
+      toast.error("Failed to post comment");
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    try {
+      const { error } = await supabase
+        .from("task_comments")
+        .delete()
+        .eq("id", commentId);
+
+      if (error) throw error;
+      toast.success("Comment deleted");
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      toast.error("Failed to delete comment");
+    }
+  };
 
   useEffect(() => {
     if (!task) return;
@@ -288,6 +390,94 @@ const TaskModal = ({
                 </div>
               )}
             </div>
+
+            {/* Comments Section */}
+            {!isEditing && (
+              <div className="flex flex-col gap-4 border-t border-border-primary/30 pt-6">
+                <h3 className="text-xs font-black uppercase tracking-widest text-text-muted flex items-center gap-2">
+                  <MessageCircle size={14} />
+                  Comments ({comments.length})
+                </h3>
+
+                {/* Comment list */}
+                <div className="flex flex-col gap-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                  {isCommentsLoading ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2 size={20} className="animate-spin text-accent-primary" />
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <p className="text-xs text-text-muted font-bold tracking-tight italic py-2 pl-1">
+                      No comments yet. Be the first to say something!
+                    </p>
+                  ) : (
+                    comments.map((comment) => (
+                      <div
+                        key={comment.id}
+                        className="flex gap-3 bg-bg-secondary/20 p-3.5 rounded-2xl border border-border-primary/20 relative group hover:border-border-primary/45 transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-accent-primary/10 text-accent-primary border border-accent-primary/20 flex items-center justify-center font-black text-xs flex-shrink-0">
+                          {comment.user_name ? comment.user_name[0].toUpperCase() : "?"}
+                        </div>
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2 mb-1">
+                            <span className="text-xs font-black text-text-primary truncate">
+                              {comment.user_name}
+                            </span>
+                            <span className="text-[9px] text-text-muted font-bold tracking-tight">
+                              {new Date(comment.created_at).toLocaleDateString([], {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">
+                            {comment.content}
+                          </p>
+                        </div>
+
+                        {currentUser && comment.user_id === currentUser.id && (
+                          <button
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="absolute right-3.5 top-3.5 text-text-muted hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all active:scale-95"
+                            title="Delete Comment"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Post a new comment */}
+                {currentUser && (
+                  <form onSubmit={handlePostComment} className="flex gap-2.5 mt-2">
+                    <input
+                      type="text"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Add a comment..."
+                      className="flex-1 bg-bg-secondary/40 border border-border-primary/40 rounded-xl px-4 py-3 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary/50 transition-all"
+                      disabled={isPosting}
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={!newComment.trim() || isPosting}
+                      className="p-3 bg-accent-primary text-bg-primary rounded-xl hover:bg-accent-primary/95 transition-all disabled:opacity-50 flex items-center justify-center flex-shrink-0 active:scale-95"
+                    >
+                      {isPosting ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Send size={14} />
+                      )}
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-4 pt-4 border-t border-border-primary/30">
