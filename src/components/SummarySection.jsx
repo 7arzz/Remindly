@@ -221,25 +221,66 @@ function SummarySection({ currentUser }) {
       const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
-      // Convert image to base64
-      const fileData = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result.split(",")[1]);
-        reader.readAsDataURL(imageFile);
-      });
+      const isTextFile = imageFile.type === "text/plain" || imageFile.name.endsWith(".txt");
+      const isPdf = imageFile.type === "application/pdf";
+      const isImage = imageFile.type.startsWith("image/");
+      const isDocx = imageFile.name.endsWith(".docx");
+      const isPptx = imageFile.name.endsWith(".pptx");
 
       const prompt =
-        "Tolong analisis gambar catatan/dokumen ini. Berikan judul yang sangat singkat (maks 5 kata) dan isi rangkuman yang jelas dalam bahasa Indonesia. Format jawaban harus seperti ini:\nJudul: [isi judul]\nIsi: [isi rangkuman]";
+        "Tolong analisis file catatan/dokumen ini. Berikan judul yang sangat singkat (maks 5 kata) dan isi rangkuman yang jelas dalam bahasa Indonesia. Format jawaban harus seperti ini:\nJudul: [isi judul]\nIsi: [isi rangkuman]";
 
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: fileData,
-            mimeType: imageFile.type,
+      if (isImage || isPdf) {
+        // Process Image or PDF via inlineData (Multimodal)
+        const fileData = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result.split(",")[1]);
+          reader.readAsDataURL(imageFile);
+        });
+
+        result = await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              data: fileData,
+              mimeType: imageFile.type || (isPdf ? "application/pdf" : "image/jpeg"),
+            },
           },
-        },
-      ]);
+        ]);
+      } else if (isTextFile) {
+        // Process Text File
+        const textContent = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsText(imageFile);
+        });
+        result = await model.generateContent(`${prompt}\n\nIsi file:\n${textContent}`);
+      } else if (isDocx && window.mammoth) {
+        // Process DOCX via Mammoth
+        const arrayBuffer = await imageFile.arrayBuffer();
+        const docxResult = await window.mammoth.extractRawText({ arrayBuffer });
+        result = await model.generateContent(`${prompt}\n\nIsi file Word:\n${docxResult.value}`);
+      } else if (isPptx && window.JSZip) {
+        // Process PPTX via JSZip + XML Parser
+        const arrayBuffer = await imageFile.arrayBuffer();
+        const zip = await window.JSZip.loadAsync(arrayBuffer);
+        let pptText = "";
+        
+        // Loop through all slides
+        const slideFiles = Object.keys(zip.files).filter(name => name.startsWith("ppt/slides/slide") && name.endsWith(".xml"));
+        
+        for (const slidePath of slideFiles) {
+          const content = await zip.file(slidePath).async("text");
+          // Simple XML tag stripping to get text
+          const stripped = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+          pptText += `\n[Slide]: ${stripped}`;
+        }
+        
+        if (!pptText) throw new Error("Gagal mengambil teks dari file PPTX.");
+        result = await model.generateContent(`${prompt}\n\nIsi file PowerPoint:\n${pptText.substring(0, 5000)}`);
+      } else {
+        throw new Error("Format file ini belum didukung untuk pemindaian AI. Gunakan Gambar, PDF, Teks, Word (.docx), atau PPTX.");
+      }
 
       const response = await result.response;
       const text = response.text();
@@ -254,7 +295,7 @@ function SummarySection({ currentUser }) {
       toast.success("Berhasil memindai catatan dengan AI!");
     } catch (error) {
       console.error("AI Scan Error:", error);
-      toast.error("Gagal memindai dengan AI. Pastikan API Key valid.");
+      toast.error(error.message || "Gagal memindai dengan AI. Pastikan API Key valid.");
     } finally {
       setIsScanning(false);
     }
