@@ -70,7 +70,7 @@ export default function RoadmapCard({
       <div className="card-header">
         <div className="card-title-area">
           <div className="card-number">Map #{cardNum}</div>
-          {!isOwner && <span className="read-only-badge">Read Only</span>}
+
           {editing ? (
             <div className="edit-title-form">
               <input

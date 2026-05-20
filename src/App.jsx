@@ -229,6 +229,7 @@ function App() {
       const { data, error } = await supabase
         .from("roadmaps")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (error) console.error("Error fetching roadmaps:", error);
@@ -241,7 +242,7 @@ function App() {
       .channel("roadmaps_changes")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "roadmaps" },
+        { event: "*", schema: "public", table: "roadmaps", filter: `user_id=eq.${user.id}` },
         (payload) => {
           if (payload.eventType === "INSERT") {
             setRoadmaps((prev) => [payload.new, ...prev]);
