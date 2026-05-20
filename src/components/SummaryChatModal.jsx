@@ -275,25 +275,23 @@ export default function SummaryChatModal({ summary, isOpen, onClose }) {
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      {isOpen &&
-        summary &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[200] overflow-y-auto bg-black/60 backdrop-blur-md custom-scrollbar"
-            onClick={onClose}
-          >
-            <div className="flex min-h-full w-full justify-center items-start p-4 sm:p-6">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.92, y: 24 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.92, y: 24 }}
-                transition={{ type: "spring", stiffness: 300, damping: 28 }}
-                className="bg-bg-card border border-border-primary rounded-[28px] w-full max-w-lg flex flex-col shadow-2xl relative my-auto overflow-hidden"
-                style={{ maxHeight: "90vh" }}
-                onClick={(e) => e.stopPropagation()}
-              >
+      {isOpen && summary && (
+        <div
+          className="fixed inset-0 z-[200] overflow-y-auto bg-black/60 backdrop-blur-md custom-scrollbar"
+          onClick={onClose}
+        >
+          <div className="flex min-h-full w-full justify-center items-start p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 24 }}
+              transition={{ type: "spring", stiffness: 300, damping: 28 }}
+              className="bg-bg-card border border-border-primary rounded-[28px] w-full max-w-lg flex flex-col shadow-2xl relative my-auto overflow-hidden"
+              style={{ maxHeight: "90vh" }}
+              onClick={(e) => e.stopPropagation()}
+            >
                 {/* ── Header ── */}
                 <div className="flex-shrink-0 px-5 py-4 border-b border-border-primary/50 flex justify-between items-center bg-bg-secondary/20">
                   <div className="flex items-center gap-3">
@@ -418,11 +416,11 @@ export default function SummaryChatModal({ summary, isOpen, onClose }) {
                     <Send size={18} />
                   </button>
                 </form>
-              </motion.div>
-            </div>
-          </div>,
-          document.body,
-        )}
-    </AnimatePresence>
+            </motion.div>
+          </div>
+        </div>
+      )}
+    </AnimatePresence>,
+    document.body,
   );
 }
