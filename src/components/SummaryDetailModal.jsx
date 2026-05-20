@@ -115,7 +115,7 @@ export default function SummaryDetailModal({
               {/* ── Content ── */}
               <div className="p-6 sm:p-8 flex flex-col gap-6">
                 {/* Meta row */}
-                <div className="grid grid-cols-2 gap-4 p-4 bg-bg-secondary/50 rounded-2xl border border-border-primary/50">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-bg-secondary rounded-2xl border border-border-primary/50">
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
                       Tanggal
@@ -149,7 +149,7 @@ export default function SummaryDetailModal({
                     <span className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">
                       Lampiran
                     </span>
-                    <div className="flex items-center justify-between bg-bg-secondary/30 p-4 rounded-2xl border border-border-primary/30 hover:border-accent-primary/30 transition-all">
+                    <div className="flex items-center justify-between bg-bg-secondary p-4 rounded-2xl border border-border-primary/30 hover:border-accent-primary/30 transition-all">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-xl bg-accent-primary/10 text-accent-primary border border-accent-primary/20 flex items-center justify-center flex-shrink-0">
                           {fileType === "pdf" ? (
@@ -200,7 +200,7 @@ export default function SummaryDetailModal({
                     <span className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">
                       Lampiran Foto
                     </span>
-                    <div className="flex items-center justify-between bg-bg-secondary/20 p-3 rounded-2xl border border-border-primary/20 hover:border-accent-primary/30 transition-all">
+                    <div className="flex items-center justify-between bg-bg-secondary p-3 rounded-2xl border border-border-primary/20 hover:border-accent-primary/30 transition-all">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-12 h-12 rounded-xl overflow-hidden border border-border-primary/40 flex-shrink-0">
                           <img
@@ -237,7 +237,7 @@ export default function SummaryDetailModal({
                     <FileText size={14} />
                     Isi Catatan
                   </h3>
-                  <div className="text-text-secondary leading-relaxed whitespace-pre-wrap bg-bg-secondary/30 p-5 rounded-2xl border border-border-primary/30 text-sm max-h-60 overflow-y-auto custom-scrollbar">
+                  <div className="text-text-secondary leading-relaxed whitespace-pre-wrap bg-bg-secondary p-5 rounded-2xl border border-border-primary/30 text-sm max-h-60 overflow-y-auto custom-scrollbar">
                     {summary.content}
                   </div>
                 </div>

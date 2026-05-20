@@ -116,7 +116,7 @@ function SummarySection({ currentUser }) {
         if (uploadError) {
           console.error("Upload error details:", uploadError);
           throw new Error(
-            "Gagal mengupload gambar. Pastikan bucket 'remindly_assets' ada dan public.",
+            `Gagal mengupload gambar: ${uploadError.message || "Pastikan bucket 'remindly_assets' ada dan public."}`,
           );
         }
 
@@ -155,7 +155,7 @@ function SummarySection({ currentUser }) {
       resetForm();
     } catch (error) {
       console.error("Error saving summary:", error);
-      toast.error(error.message || "Error saving summary.");
+      toast.error(`Gagal menyimpan: ${error.message || "Periksa koneksi atau kebijakan database."}`);
     } finally {
       setLoading(false);
     }
@@ -334,7 +334,7 @@ function SummarySection({ currentUser }) {
           <input
             type="text"
             placeholder="Search summaries..."
-            className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3.5 pl-11 pr-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all"
+            className="w-full bg-bg-secondary border border-border-primary/50 rounded-xl py-3.5 pl-11 pr-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -543,7 +543,7 @@ function SummarySection({ currentUser }) {
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
                           placeholder="e.g., Mathematics Lecture Notes"
-                          className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3 px-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary transition-all"
+                          className="w-full bg-bg-secondary border border-border-primary/50 rounded-xl py-3 px-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary transition-all"
                           required
                         />
                       </div>
@@ -556,7 +556,7 @@ function SummarySection({ currentUser }) {
                           type="date"
                           value={date}
                           onChange={(e) => setDate(e.target.value)}
-                          className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl py-3 px-4 text-text-primary focus:outline-none focus:border-accent-primary transition-all"
+                          className="w-full bg-bg-secondary border border-border-primary/50 rounded-xl py-3 px-4 text-text-primary focus:outline-none focus:border-accent-primary transition-all color-scheme-dark"
                           required
                         />
                       </div>
@@ -586,7 +586,7 @@ function SummarySection({ currentUser }) {
                           value={content}
                           onChange={(e) => setContent(e.target.value)}
                           placeholder="Briefly describe the summary..."
-                          className="w-full bg-bg-secondary/50 border border-border-primary/50 rounded-xl p-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary transition-all min-h-[120px] resize-none"
+                          className="w-full bg-bg-secondary border border-border-primary/50 rounded-xl p-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary transition-all min-h-[120px] resize-none"
                           required
                         />
                       </div>
@@ -643,7 +643,7 @@ function SummarySection({ currentUser }) {
                             </div>
                           </div>
                         ) : (
-                          <label className="w-full bg-bg-secondary/50 border border-border-primary/50 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-accent-primary hover:bg-accent-primary/5 transition-all">
+                          <label className="w-full bg-bg-secondary border border-border-primary/50 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-accent-primary hover:bg-accent-primary/5 transition-all">
                             <div className="p-3 bg-bg-primary rounded-full text-accent-primary/80 mb-2">
                               <ImageIcon size={24} />
                             </div>

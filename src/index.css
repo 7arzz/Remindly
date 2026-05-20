@@ -1457,6 +1457,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 .dark .priority-tag-low {
   color: #6ee7b7; /* Soft pastel green for dark mode */
 }
-
-
-
+@layer utilities {
+  .color-scheme-dark {
+    color-scheme: dark;
+  }
+}

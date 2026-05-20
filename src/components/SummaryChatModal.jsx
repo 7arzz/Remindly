@@ -293,7 +293,7 @@ export default function SummaryChatModal({ summary, isOpen, onClose }) {
               onClick={(e) => e.stopPropagation()}
             >
                 {/* ── Header ── */}
-                <div className="flex-shrink-0 px-5 py-4 border-b border-border-primary/50 flex justify-between items-center bg-bg-secondary/20">
+                <div className="flex-shrink-0 px-5 py-4 border-b border-border-primary/50 flex justify-between items-center bg-bg-secondary">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-accent-primary/10 text-accent-primary rounded-xl">
                       <Brain size={18} />
@@ -331,7 +331,7 @@ export default function SummaryChatModal({ summary, isOpen, onClose }) {
                 {/* ── Scrollable Area (summary card + messages) ── */}
                 <div
                   ref={scrollRef}
-                  className="flex-1 overflow-y-auto custom-scrollbar bg-bg-primary/30"
+                  className="flex-1 overflow-y-auto custom-scrollbar bg-bg-primary"
                   style={{ minHeight: 0 }}
                 >
                   {/* Auto-summary card */}
@@ -397,7 +397,7 @@ export default function SummaryChatModal({ summary, isOpen, onClose }) {
                 {/* ── Input ── */}
                 <form
                   onSubmit={handleSend}
-                  className="flex-shrink-0 p-4 border-t border-border-primary/50 flex gap-3 bg-bg-secondary/20"
+                  className="flex-shrink-0 p-4 border-t border-border-primary/50 flex gap-3 bg-bg-secondary"
                 >
                   <input
                     ref={inputRef}
@@ -405,7 +405,7 @@ export default function SummaryChatModal({ summary, isOpen, onClose }) {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Tanyakan sesuatu tentang catatan ini…"
-                    className="flex-1 bg-bg-primary/50 border border-border-primary/50 rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all"
+                    className="flex-1 bg-bg-primary border border-border-primary/50 rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all"
                     disabled={loading}
                   />
                   <button

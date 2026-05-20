@@ -291,7 +291,7 @@ const TaskModal = ({
           {/* Content */}
           <div className="p-6 sm:p-8 flex flex-col gap-8">
             {/* Meta Info */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-bg-secondary/50 rounded-2xl border border-border-primary/50">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-bg-secondary border border-border-primary/50 rounded-2xl">
               {/* Deadline */}
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
@@ -309,7 +309,7 @@ const TaskModal = ({
                         const currentTime = editTime.split("T")[1];
                         setEditTime(`${newDate}T${currentTime}`);
                       }}
-                      className="bg-transparent border-none focus:outline-none text-accent-primary"
+                      className="bg-transparent border-none focus:outline-none text-accent-primary color-scheme-dark"
                     />
                   ) : (
                     <span>{new Date(task.time).toLocaleDateString()}</span>
@@ -334,7 +334,7 @@ const TaskModal = ({
                         const currentDate = editTime.split("T")[0];
                         setEditTime(`${currentDate}T${newTime}`);
                       }}
-                      className="bg-transparent border-none focus:outline-none text-accent-primary"
+                      className="bg-transparent border-none focus:outline-none text-accent-primary color-scheme-dark"
                     />
                   ) : (
                     <span>
@@ -394,11 +394,19 @@ const TaskModal = ({
                   <div className="flex items-center justify-between bg-bg-secondary/20 p-4 rounded-2xl border border-border-primary/20 hover:border-accent-primary/30 transition-all">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-xl overflow-hidden border border-border-primary/40 flex-shrink-0">
-                        <img src={task.image_url} alt="Attachment" className="w-full h-full object-cover" />
+                        <img
+                          src={task.image_url}
+                          alt="Attachment"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-bold text-text-primary truncate">Image Attachment</span>
-                        <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">JPEG/PNG/WebP</span>
+                        <span className="text-xs font-bold text-text-primary truncate">
+                          Image Attachment
+                        </span>
+                        <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">
+                          JPEG/PNG/WebP
+                        </span>
                       </div>
                     </div>
                     <a
@@ -470,11 +478,11 @@ const TaskModal = ({
                   value={editDetail}
                   onChange={(e) => setEditDetail(e.target.value)}
                   rows={4}
-                  className="w-full bg-bg-secondary/30 p-5 rounded-2xl border border-border-primary/30 text-text-secondary focus:outline-none focus:border-accent-primary transition-all resize-none"
+                  className="w-full bg-bg-secondary p-5 rounded-2xl border border-border-primary/30 text-text-secondary focus:outline-none focus:border-accent-primary transition-all resize-none"
                   placeholder="Task description..."
                 />
               ) : (
-                <div className="text-text-secondary leading-relaxed whitespace-pre-wrap bg-bg-secondary/30 p-5 rounded-2xl border border-border-primary/30">
+                <div className="text-text-secondary leading-relaxed whitespace-pre-wrap bg-bg-secondary p-5 rounded-2xl border border-border-primary/30">
                   {task.detail ||
                     "No additional details provided for this task."}
                 </div>
@@ -493,7 +501,10 @@ const TaskModal = ({
                 <div className="flex flex-col gap-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
                   {isCommentsLoading ? (
                     <div className="flex justify-center py-4">
-                      <Loader2 size={20} className="animate-spin text-accent-primary" />
+                      <Loader2
+                        size={20}
+                        className="animate-spin text-accent-primary"
+                      />
                     </div>
                   ) : comments.length === 0 ? (
                     <p className="text-xs text-text-muted font-bold tracking-tight italic py-2 pl-1">
@@ -503,10 +514,12 @@ const TaskModal = ({
                     comments.map((comment) => (
                       <div
                         key={comment.id}
-                        className="flex gap-3 bg-bg-secondary/20 p-3.5 rounded-2xl border border-border-primary/20 relative group hover:border-border-primary/45 transition-colors"
+                        className="flex gap-3 bg-bg-secondary p-3.5 rounded-2xl border border-border-primary/20 relative group hover:border-border-primary/45 transition-colors"
                       >
                         <div className="w-8 h-8 rounded-full bg-accent-primary/10 text-accent-primary border border-accent-primary/20 flex items-center justify-center font-black text-xs flex-shrink-0">
-                          {comment.user_name ? comment.user_name[0].toUpperCase() : "?"}
+                          {comment.user_name
+                            ? comment.user_name[0].toUpperCase()
+                            : "?"}
                         </div>
                         <div className="flex flex-col flex-1 min-w-0">
                           <div className="flex items-baseline justify-between gap-2 mb-1">
@@ -514,12 +527,15 @@ const TaskModal = ({
                               {comment.user_name}
                             </span>
                             <span className="text-[9px] text-text-muted font-bold tracking-tight">
-                              {new Date(comment.created_at).toLocaleDateString([], {
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {new Date(comment.created_at).toLocaleDateString(
+                                [],
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
                             </span>
                           </div>
                           <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">
@@ -543,13 +559,16 @@ const TaskModal = ({
 
                 {/* Post a new comment */}
                 {currentUser && (
-                  <form onSubmit={handlePostComment} className="flex gap-2.5 mt-2">
+                  <form
+                    onSubmit={handlePostComment}
+                    className="flex gap-2.5 mt-2"
+                  >
                     <input
                       type="text"
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Add a comment..."
-                      className="flex-1 bg-bg-secondary/40 border border-border-primary/40 rounded-xl px-4 py-3 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary/50 transition-all"
+                      className="flex-1 bg-bg-secondary border border-border-primary/40 rounded-xl px-4 py-3 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:bg-bg-primary transition-all"
                       disabled={isPosting}
                       required
                     />
