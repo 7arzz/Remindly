@@ -23,6 +23,7 @@ import { supabase } from "../supabase";
 import { toast } from "sonner";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import SummaryChatModal from "./SummaryChatModal";
+import SummaryDetailModal from "./SummaryDetailModal";
 
 const getFileType = (url) => {
   if (!url) return null;
@@ -55,6 +56,8 @@ function SummarySection({ currentUser }) {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [selectedSummaryForChat, setSelectedSummaryForChat] = useState(null);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [selectedSummaryForDetail, setSelectedSummaryForDetail] = useState(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchSummaries = async () => {
@@ -379,13 +382,17 @@ function SummarySection({ currentUser }) {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="glass-card flex flex-col p-6 hover:translate-y-[-4px] active:scale-[0.98] group"
+                className="glass-card flex flex-col p-6 hover:translate-y-[-4px] active:scale-[0.98] group cursor-pointer"
+                onClick={() => {
+                  setSelectedSummaryForDetail(s);
+                  setIsDetailModalOpen(true);
+                }}
               >
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-xl font-bold text-text-primary leading-tight group-hover:text-accent-primary transition-colors">
                     {s.title}
                   </h3>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     {s.user_email === currentUser.email && (
                       <>
                         <button
@@ -476,7 +483,8 @@ function SummarySection({ currentUser }) {
                 </div>
 
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setSelectedSummaryForChat(s);
                     setIsChatModalOpen(true);
                   }}
@@ -689,6 +697,19 @@ function SummarySection({ currentUser }) {
         isOpen={isChatModalOpen}
         onClose={() => setIsChatModalOpen(false)}
         summary={selectedSummaryForChat}
+      />
+      <SummaryDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        summary={selectedSummaryForDetail}
+        currentUser={currentUser}
+        onEdit={(s) => { setIsDetailModalOpen(false); handleEdit(s); }}
+        onDelete={(s) => { setIsDetailModalOpen(false); handleDelete(s); }}
+        onAskAI={(s) => {
+          setIsDetailModalOpen(false);
+          setSelectedSummaryForChat(s);
+          setIsChatModalOpen(true);
+        }}
       />
     </div>
   );
