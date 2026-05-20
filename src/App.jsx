@@ -448,48 +448,57 @@ function App() {
       done: false,
     };
 
+    const updatedSteps = [...roadmap.steps, newStep];
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("roadmaps")
-        .update({ steps: [...roadmap.steps, newStep] })
-        .eq("id", roadmapId);
+        .update({ steps: updatedSteps })
+        .eq("id", roadmapId)
+        .select();
+
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Permission denied or roadmap not found.");
+
       toast.success("Step added!");
     } catch (error) {
       console.error("Error adding step:", error);
-      toast.error("Failed to add step.");
+      toast.error(`Gagal menambah langkah: ${error.message}`);
     }
   };
 
   const toggleStep = async (roadmapId, stepId) => {
     if (!user) return;
-    const roadmap = roadmaps.find((r) => r.id === roadmapId);
-    if (!roadmap) return;
+    
+    // Find roadmap from CURRENT state just before operation
+    const currentRoadmap = roadmaps.find((r) => r.id === roadmapId);
+    if (!currentRoadmap) return;
 
-    // Optimistic Update
-    setRoadmaps((prev) =>
-      prev.map((r) =>
-        r.id === roadmapId
-          ? {
-              ...r,
-              steps: r.steps.map((s) =>
-                s.id === stepId ? { ...s, done: !s.done } : s,
-              ),
-            }
-          : r,
-      ),
-    );
-
-    const updatedSteps = roadmap.steps.map((s) =>
+    // Calculate new steps based on CURRENT state
+    const updatedSteps = currentRoadmap.steps.map((s) =>
       s.id === stepId ? { ...s, done: !s.done } : s,
     );
 
+    // Optimistic Update (Immediate UI response)
+    setRoadmaps((prev) =>
+      prev.map((r) =>
+        r.id === roadmapId ? { ...r, steps: updatedSteps } : r
+      )
+    );
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("roadmaps")
         .update({ steps: updatedSteps })
-        .eq("id", roadmapId);
+        .eq("id", roadmapId)
+        .select();
+
       if (error) throw error;
+      
+      // If no data returned, it means the row was not found or not updated
+      if (!data || data.length === 0) {
+        throw new Error("No roadmap found with that ID or Permission Denied.");
+      }
 
       const updatedStep = updatedSteps.find((s) => s.id === stepId);
       if (updatedStep.done) {
@@ -503,12 +512,13 @@ function App() {
       }
     } catch (error) {
       console.error("Error toggling step:", error);
-      toast.error("Gagal memperbarui langkah.");
-      // Revert optimistic update
-      const originalRoadmap = roadmaps.find((r) => r.id === roadmapId);
+      toast.error(`Gagal menyimpan: ${error.message || "Masalah koneksi"}`);
+      
+      // Revert to original state on failure
+      const originalRoadmap = (await supabase.from("roadmaps").select("steps").eq("id", roadmapId).single()).data;
       if (originalRoadmap) {
         setRoadmaps((prev) =>
-          prev.map((r) => (r.id === roadmapId ? originalRoadmap : r)),
+          prev.map((r) => (r.id === roadmapId ? { ...r, steps: originalRoadmap.steps } : r)),
         );
       }
     }
@@ -524,15 +534,19 @@ function App() {
     );
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("roadmaps")
         .update({ steps: updatedSteps })
-        .eq("id", roadmapId);
+        .eq("id", roadmapId)
+        .select();
+
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Permission denied or roadmap not found.");
+
       toast.success("Step updated!");
     } catch (error) {
       console.error("Error updating step:", error);
-      toast.error("Failed to update step.");
+      toast.error(`Gagal perbarui langkah: ${error.message}`);
     }
   };
 
@@ -544,15 +558,19 @@ function App() {
     const updatedSteps = roadmap.steps.filter((s) => s.id !== stepId);
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("roadmaps")
         .update({ steps: updatedSteps })
-        .eq("id", roadmapId);
+        .eq("id", roadmapId)
+        .select();
+
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Permission denied or roadmap not found.");
+
       toast.success("Step deleted.");
     } catch (error) {
       console.error("Error deleting step:", error);
-      toast.error("Failed to delete step.");
+      toast.error(`Gagal menghapus langkah: ${error.message}`);
     }
   };
 
