@@ -3,7 +3,7 @@ import { Trash2, CheckCircle, Circle, Clock, MessageSquare, Pencil } from "lucid
 import { toast } from "sonner";
 
 function TaskCard({ task, deleteTask, toggleDone, currentUser, onClick, onEditClick }) {
-  const isOwner = currentUser && task.user_email === currentUser.email;
+  const isOwner = !!currentUser;
   const isExpired = !task.done && new Date(task.time).getTime() <= new Date().getTime();
 
   return (

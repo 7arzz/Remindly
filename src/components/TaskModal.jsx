@@ -164,7 +164,7 @@ const TaskModal = ({
 
   if (!task) return null;
 
-  const isOwner = currentUser && task.user_email === currentUser.email;
+  const isOwner = !!currentUser;
 
   const handleSave = async () => {
     if (!editText.trim()) {

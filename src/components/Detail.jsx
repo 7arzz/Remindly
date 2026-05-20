@@ -92,7 +92,7 @@ function Detail({ task, onClose, updateTask, currentUser, onDelete }) {
                 </div>
               </div>
               <div className="flex gap-2">
-                {currentUser && task.user_email === currentUser.email && (
+                {currentUser && (
                   <button 
                     className="p-2 rounded-xl bg-bg-secondary text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90" 
                     onClick={() => {
