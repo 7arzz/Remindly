@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from "sonner";
 
-export default function StepModal({ step, isOpen, onClose, onToggle, roadmapTitle, onUpdateDetail, roadmapProgress }) {
+export default function StepModal({ step, isOpen, onClose, onToggle, roadmapTitle, onUpdateDetail, roadmapProgress, readOnly }) {
   const [aiDetail, setAiDetail] = useState(step.detail || "");
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -97,13 +97,15 @@ export default function StepModal({ step, isOpen, onClose, onToggle, roadmapTitl
                 </div>
               </div>
               <div className="flex gap-2 flex-shrink-0">
-                <button 
-                  className={`p-2 rounded-xl transition-all ${isEditing ? 'bg-accent-primary text-bg-primary' : 'bg-bg-secondary text-text-muted hover:text-accent-primary'}`}
-                  onClick={() => setIsEditing(!isEditing)}
-                  title="Edit Manual"
-                >
-                  <Pencil size={18}/>
-                </button>
+                {!readOnly && (
+                  <button 
+                    className={`p-2 rounded-xl transition-all ${isEditing ? 'bg-accent-primary text-bg-primary' : 'bg-bg-secondary text-text-muted hover:text-accent-primary'}`}
+                    onClick={() => setIsEditing(!isEditing)}
+                    title="Edit Manual"
+                  >
+                    <Pencil size={18}/>
+                  </button>
+                )}
                 <button onClick={onClose} className="p-2 rounded-xl bg-bg-secondary text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all">
                   <X size={20}/>
                 </button>
@@ -140,7 +142,7 @@ export default function StepModal({ step, isOpen, onClose, onToggle, roadmapTitl
                   )}
                </div>
 
-               {!isEditing && (
+               {!isEditing && !readOnly && (
                  <button 
                   onClick={handleAskAI}
                   disabled={loading}
@@ -153,15 +155,17 @@ export default function StepModal({ step, isOpen, onClose, onToggle, roadmapTitl
             </div>
 
             <div className="pt-4 border-t border-border-primary/30 flex justify-between items-center">
-               <button 
-                onClick={() => { onToggle(); onClose(); }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  step.done ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-bg-secondary text-text-muted'
-                }`}
-               >
-                 {step.done ? <CheckCircle2 size={14} /> : <Circle size={14} />}
-                 {step.done ? "Completed" : "Mark as Done"}
-               </button>
+               {!readOnly && (
+                 <button 
+                  onClick={() => { onToggle(); onClose(); }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                    step.done ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-bg-secondary text-text-muted'
+                  }`}
+                 >
+                   {step.done ? <CheckCircle2 size={14} /> : <Circle size={14} />}
+                   {step.done ? "Completed" : "Mark as Done"}
+                 </button>
+               )}
                <span className="text-[10px] font-medium text-text-muted uppercase tracking-widest line-clamp-1">Map: {roadmapTitle}</span>
             </div>
           </div>

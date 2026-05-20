@@ -377,6 +377,10 @@
   @apply text-xl sm:text-2xl font-black text-text-primary truncate;
 }
 
+.read-only-badge {
+  @apply text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20 w-fit;
+}
+
 .card-actions {
   @apply flex gap-1 sm:gap-2 shrink-0;
 }

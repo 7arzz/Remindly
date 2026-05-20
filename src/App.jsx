@@ -497,7 +497,8 @@ function App() {
       
       // If no data returned, it means the row was not found or not updated
       if (!data || data.length === 0) {
-        throw new Error("No roadmap found with that ID or Permission Denied.");
+        // If the roadmap exists in state but update fails with no rows, it's likely a permission issue
+        throw new Error("Izin ditolak: Anda bukan pemilik roadmap ini.");
       }
 
       const updatedStep = updatedSteps.find((s) => s.id === stepId);
@@ -1107,6 +1108,7 @@ function App() {
                         onDeleteStep={deleteStep}
                         onUpdateStep={updateStep}
                         onReorderStep={reorderStep}
+                        currentUser={user}
                       />
                     ))
                   )}

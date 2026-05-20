@@ -15,7 +15,9 @@ export default function RoadmapCard({
   onDeleteStep,
   onUpdateStep,
   onReorderStep,
+  currentUser,
 }) {
+  const isOwner = currentUser && roadmap.user_id === currentUser.id;
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState(roadmap.title);
   const [stepInput, setStepInput] = useState("");
@@ -68,6 +70,7 @@ export default function RoadmapCard({
       <div className="card-header">
         <div className="card-title-area">
           <div className="card-number">Map #{cardNum}</div>
+          {!isOwner && <span className="read-only-badge">Read Only</span>}
           {editing ? (
             <div className="edit-title-form">
               <input
@@ -100,7 +103,7 @@ export default function RoadmapCard({
           )}
         </div>
 
-        {!editing && (
+        {!editing && isOwner && (
           <div className="card-actions">
             <button
               className="btn-icon"
@@ -176,6 +179,7 @@ export default function RoadmapCard({
                         ? () => onReorderStep(roadmap.id, idx, idx + 1)
                         : null
                     }
+                    readOnly={!isOwner}
                   />
                 </div>
               ))}
@@ -198,12 +202,14 @@ export default function RoadmapCard({
             roadmapProgress={pct}
             onToggle={() => onToggleStep(roadmap.id, selectedStep.id)}
             onUpdateDetail={(newDetail) => onUpdateStep(roadmap.id, selectedStep.id, { detail: newDetail })}
+            readOnly={!isOwner}
           />
         )}
       </AnimatePresence>
 
       {/* Add step form */}
-      <form className="add-step-form" onSubmit={handleAddStep}>
+      {isOwner && (
+        <form className="add-step-form" onSubmit={handleAddStep}>
         <input
           type="text"
           className="step-input"
@@ -226,6 +232,7 @@ export default function RoadmapCard({
           <Plus size={15} />
         </button>
       </form>
+      )}
     </motion.div>
   );
 }

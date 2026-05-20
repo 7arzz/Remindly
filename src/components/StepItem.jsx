@@ -17,6 +17,7 @@ export default function StepCard({
   onStepClick,
   onMoveLeft,
   onMoveRight,
+  readOnly,
 }) {
   return (
     <motion.div
@@ -40,8 +41,9 @@ export default function StepCard({
           className="flex-shrink-0 cursor-pointer hover:scale-110 transition-transform p-0.5"
           onClick={(e) => {
             e.stopPropagation();
-            onToggle();
+            if (!readOnly) onToggle();
           }}
+          style={{ cursor: readOnly ? "default" : "pointer" }}
         >
           {step.done ? (
             <CheckCircle2 size={18} className="step-check-mark" strokeWidth={2} />
@@ -56,43 +58,45 @@ export default function StepCard({
         <p className="step-text">{step.text}</p>
       </div>
 
-      <div className="step-actions" onClick={(e) => e.stopPropagation()}>
-        {onMoveLeft && (
+      {!readOnly && (
+        <div className="step-actions" onClick={(e) => e.stopPropagation()}>
+          {onMoveLeft && (
+            <button
+              className="btn-step btn-step-pending"
+              onClick={onMoveLeft}
+              title="Move left"
+              aria-label="Move step left"
+            >
+              <ChevronLeft size={12} />
+            </button>
+          )}
           <button
-            className="btn-step btn-step-pending"
-            onClick={onMoveLeft}
-            title="Move left"
-            aria-label="Move step left"
+            className={`btn-step ${step.done ? "btn-step-pending" : "btn-step-done"}`}
+            onClick={onToggle}
+            title={step.done ? "Mark pending" : "Mark done"}
           >
-            <ChevronLeft size={12} />
+            {step.done ? <Circle size={12} /> : <CheckCircle2 size={12} />}
           </button>
-        )}
-        <button
-          className={`btn-step ${step.done ? "btn-step-pending" : "btn-step-done"}`}
-          onClick={onToggle}
-          title={step.done ? "Mark pending" : "Mark done"}
-        >
-          {step.done ? <Circle size={12} /> : <CheckCircle2 size={12} />}
-        </button>
-        {onMoveRight && (
+          {onMoveRight && (
+            <button
+              className="btn-step btn-step-pending"
+              onClick={onMoveRight}
+              title="Move right"
+              aria-label="Move step right"
+            >
+              <ChevronRight size={12} />
+            </button>
+          )}
           <button
-            className="btn-step btn-step-pending"
-            onClick={onMoveRight}
-            title="Move right"
-            aria-label="Move step right"
+            className="btn-step btn-step-delete"
+            onClick={onDelete}
+            title="Delete step"
+            aria-label="Delete this step"
           >
-            <ChevronRight size={12} />
+            <Trash2 size={11} />
           </button>
-        )}
-        <button
-          className="btn-step btn-step-delete"
-          onClick={onDelete}
-          title="Delete step"
-          aria-label="Delete this step"
-        >
-          <Trash2 size={11} />
-        </button>
-      </div>
+        </div>
+      )}
     </motion.div>
   );
 }
