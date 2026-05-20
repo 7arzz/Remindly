@@ -36,15 +36,23 @@ export default function StepCard({
     >
       <div className="step-number">Step {index + 1}</div>
       <div className="step-content">
-        {step.done ? (
-          <CheckCircle2 size={18} className="step-check-mark" strokeWidth={2} />
-        ) : (
-          <Circle
-            size={18}
-            style={{ color: "var(--text-muted)", opacity: 0.4 }}
-            strokeWidth={1.5}
-          />
-        )}
+        <div 
+          className="flex-shrink-0 cursor-pointer hover:scale-110 transition-transform p-0.5"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+        >
+          {step.done ? (
+            <CheckCircle2 size={18} className="step-check-mark" strokeWidth={2} />
+          ) : (
+            <Circle
+              size={18}
+              style={{ color: "var(--text-muted)", opacity: 0.4 }}
+              strokeWidth={1.5}
+            />
+          )}
+        </div>
         <p className="step-text">{step.text}</p>
       </div>
 

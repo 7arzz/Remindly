@@ -466,6 +466,20 @@ function App() {
     const roadmap = roadmaps.find((r) => r.id === roadmapId);
     if (!roadmap) return;
 
+    // Optimistic Update
+    setRoadmaps((prev) =>
+      prev.map((r) =>
+        r.id === roadmapId
+          ? {
+              ...r,
+              steps: r.steps.map((s) =>
+                s.id === stepId ? { ...s, done: !s.done } : s,
+              ),
+            }
+          : r,
+      ),
+    );
+
     const updatedSteps = roadmap.steps.map((s) =>
       s.id === stepId ? { ...s, done: !s.done } : s,
     );
@@ -477,8 +491,9 @@ function App() {
         .eq("id", roadmapId);
       if (error) throw error;
 
-      const isNowDone = updatedSteps.find((s) => s.id === stepId).done;
-      if (isNowDone) {
+      const updatedStep = updatedSteps.find((s) => s.id === stepId);
+      if (updatedStep.done) {
+        toast.success("Langkah selesai!", { icon: "✅" });
         confetti({
           particleCount: 40,
           spread: 50,
@@ -488,6 +503,14 @@ function App() {
       }
     } catch (error) {
       console.error("Error toggling step:", error);
+      toast.error("Gagal memperbarui langkah.");
+      // Revert optimistic update
+      const originalRoadmap = roadmaps.find((r) => r.id === roadmapId);
+      if (originalRoadmap) {
+        setRoadmaps((prev) =>
+          prev.map((r) => (r.id === roadmapId ? originalRoadmap : r)),
+        );
+      }
     }
   };
 
