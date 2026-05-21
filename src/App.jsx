@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   BarChart3,
   Trash2,
@@ -294,6 +294,8 @@ function App() {
       : roadmaps.filter((r) => !r.is_private);
   }, [roadmaps, appMode, user]);
 
+
+
   useEffect(() => {
     localStorage.setItem("remindly_sortBy", sortBy);
   }, [sortBy]);
@@ -339,7 +341,7 @@ function App() {
         return false;
       }
     },
-    [user],
+    [user, appMode],
   );
 
   // Delete task
@@ -353,7 +355,7 @@ function App() {
         console.error("Error deleting task: ", error);
       }
     },
-    [user],
+    [user, supabase],
   );
 
   // Delete all tasks in current mode
@@ -373,6 +375,8 @@ function App() {
       toast.error(err.message);
     }
   }, [user, displayTasks, appMode]);
+
+
 
   const updateTask = useCallback(
     async (id, updates) => {
@@ -1223,7 +1227,7 @@ function App() {
                         key={roadmap.id}
                         roadmap={roadmap}
                         index={idx}
-                        total={roadmaps.length}
+                        total={displayRoadmaps.length}
                         onDeleteRoadmap={deleteRoadmap}
                         onEditRoadmap={editRoadmap}
                         onAddStep={addStep}
