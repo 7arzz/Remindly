@@ -280,6 +280,20 @@ function App() {
     localStorage.setItem("remindly_filter", filter);
   }, [filter]);
 
+  const displayTasks = useMemo(() => {
+    if (!user) return [];
+    return appMode === "independent"
+      ? tasks.filter((t) => t.user_id === user.id)
+      : tasks.filter((t) => !t.is_private);
+  }, [tasks, appMode, user]);
+
+  const displayRoadmaps = useMemo(() => {
+    if (!user) return [];
+    return appMode === "independent"
+      ? roadmaps.filter((r) => r.user_id === user.id)
+      : roadmaps.filter((r) => !r.is_private);
+  }, [roadmaps, appMode, user]);
+
   useEffect(() => {
     localStorage.setItem("remindly_sortBy", sortBy);
   }, [sortBy]);
@@ -341,6 +355,24 @@ function App() {
     },
     [user],
   );
+
+  // Delete all tasks in current mode
+  const clearAll = useCallback(async () => {
+    if (!user) return;
+    try {
+      const taskIds = displayTasks.map((t) => t.id);
+      if (taskIds.length === 0) return;
+
+      const { error } = await supabase
+        .from("tasks")
+        .delete()
+        .in("id", taskIds);
+      if (error) throw error;
+      toast.success(`Cleared ${taskIds.length} tasks from ${appMode === 'independent' ? 'Personal Space' : 'Team Hub'}`);
+    } catch (err) {
+      toast.error(err.message);
+    }
+  }, [user, displayTasks, appMode]);
 
   const updateTask = useCallback(
     async (id, updates) => {
@@ -647,34 +679,6 @@ function App() {
       console.error("Error reordering steps:", error);
     }
   };
-
-  const clearAll = useCallback(async () => {
-    if (!user) return;
-
-    toast("Clear All Tasks?", {
-      description:
-        "Are you sure you want to clear ALL PUBLIC tasks? This cannot be undone.",
-      action: {
-        label: "Clear All",
-        onClick: async () => {
-          try {
-            const { error } = await supabase
-              .from("tasks")
-              .delete()
-              .not("id", "is", null); // Delete all
-            if (error) throw error;
-            toast.success("All public tasks cleared.");
-          } catch (error) {
-            console.error("Error clearing tasks: ", error);
-            toast.error("Failed to clear tasks.");
-          }
-        },
-      },
-      cancel: {
-        label: "Cancel",
-      },
-    });
-  }, [user]);
 
   const handleLogin = async () => {
     try {
@@ -1144,7 +1148,7 @@ function App() {
             {activeTab === "tasks" ? (
               <div className="flex flex-col gap-6 sm:gap-10 fadeIn">
                 <div id="progress-bar-container">
-                  <ProgressBar tasks={tasks} />
+                  <ProgressBar tasks={displayTasks} />
                 </div>
                 <div
                   id="task-input-container"
@@ -1174,11 +1178,7 @@ function App() {
                   </button>
                 </div>
                 <TaskList
-                  tasks={
-                    appMode === "independent"
-                      ? tasks.filter((t) => t.user_id === user.id)
-                      : tasks.filter((t) => !t.is_private)
-                  }
+                  tasks={displayTasks}
                   deleteTask={deleteTask}
                   toggleDone={toggleDone}
                   updateTask={updateTask}
@@ -1210,13 +1210,7 @@ function App() {
                 </div>
 
                 <div className="flex flex-col gap-8">
-                  {roadmaps
-                    .filter((r) =>
-                      appMode === "independent"
-                        ? r.user_id === user.id
-                        : !r.is_private,
-                    )
-                    .length === 0 ? (
+                  {displayRoadmaps.length === 0 ? (
                     <div className="glass-card p-16 text-center flex flex-col items-center gap-4">
                       <div className="w-20 h-20 bg-bg-secondary rounded-full flex items-center justify-center text-text-muted">
                         <Globe size={40} />
@@ -1224,29 +1218,23 @@ function App() {
                       <h3 className="text-xl font-bold">No roadmaps yet</h3>
                     </div>
                   ) : (
-                    roadmaps
-                      .filter((r) =>
-                        appMode === "independent"
-                          ? r.user_id === user.id
-                          : !r.is_private,
-                      )
-                      .map((roadmap, idx) => (
-                        <RoadmapCard
-                          key={roadmap.id}
-                          roadmap={roadmap}
-                          index={idx}
-                          total={roadmaps.length}
-                          onDeleteRoadmap={deleteRoadmap}
-                          onEditRoadmap={editRoadmap}
-                          onAddStep={addStep}
-                          onToggleStep={toggleStep}
-                          onDeleteStep={deleteStep}
-                          onUpdateStep={updateStep}
-                          onReorderStep={reorderStep}
-                          onTransferRoadmap={transferRoadmap}
-                          currentUser={user}
-                        />
-                      ))
+                    displayRoadmaps.map((roadmap, idx) => (
+                      <RoadmapCard
+                        key={roadmap.id}
+                        roadmap={roadmap}
+                        index={idx}
+                        total={roadmaps.length}
+                        onDeleteRoadmap={deleteRoadmap}
+                        onEditRoadmap={editRoadmap}
+                        onAddStep={addStep}
+                        onToggleStep={toggleStep}
+                        onDeleteStep={deleteStep}
+                        onUpdateStep={updateStep}
+                        onReorderStep={reorderStep}
+                        onTransferRoadmap={transferRoadmap}
+                        currentUser={user}
+                      />
+                    ))
                   )}
                 </div>
               </div>
@@ -1292,7 +1280,7 @@ function App() {
       <StatsDrawer
         isOpen={isStatsOpen}
         onClose={() => setIsStatsOpen(false)}
-        tasks={tasks}
+        tasks={displayTasks}
         history={[]}
       />
 
