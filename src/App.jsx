@@ -9,7 +9,8 @@ import {
   FileText,
   CheckCircle2,
   HelpCircle,
-  Menu,
+  Users,
+  User,
   X,
 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -45,6 +46,9 @@ function App() {
     () => localStorage.getItem("remindly_sortBy") || "time",
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [appMode, setAppMode] = useState(
+    () => localStorage.getItem("remindly_appMode") || "group",
+  ); // "group" or "independent"
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedDetailTaskId, setSelectedDetailTaskId] = useState(null);
@@ -216,7 +220,7 @@ function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, appMode]);
 
   // Supabase Sync - Real-time Roadmaps
   useEffect(() => {
@@ -226,11 +230,16 @@ function App() {
     }
 
     const fetchRoadmaps = async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("roadmaps")
         .select("*")
-        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
+
+      if (appMode === "independent") {
+        query = query.eq("user_id", user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) console.error("Error fetching roadmaps:", error);
       else setRoadmaps(data || []);
@@ -242,10 +251,12 @@ function App() {
       .channel("roadmaps_changes")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "roadmaps", filter: `user_id=eq.${user.id}` },
+        { event: "*", schema: "public", table: "roadmaps" },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setRoadmaps((prev) => [payload.new, ...prev]);
+            if (appMode === "group" || payload.new.user_id === user.id) {
+              setRoadmaps((prev) => [payload.new, ...prev]);
+            }
           } else if (payload.eventType === "UPDATE") {
             setRoadmaps((prev) =>
               prev.map((r) => (r.id === payload.new.id ? payload.new : r)),
@@ -270,6 +281,10 @@ function App() {
     localStorage.setItem("remindly_sortBy", sortBy);
   }, [sortBy]);
 
+  useEffect(() => {
+    localStorage.setItem("remindly_appMode", appMode);
+  }, [appMode]);
+
   // Add task
   const addTask = useCallback(
     async (text, time, priority, detail, imageUrl, reminderOffset) => {
@@ -287,6 +302,7 @@ function App() {
           done: false,
           image_url: imageUrl || null,
           reminder_offset: reminderOffset || 0,
+          is_private: appMode === "independent",
         };
 
         const { error } = await supabase.from("tasks").insert([newTask]);
@@ -385,6 +401,7 @@ function App() {
           user_id: user.id,
           steps: steps,
           created_at: new Date().toISOString(),
+          is_private: appMode === "independent",
         },
       ]);
       if (error) throw error;
@@ -735,13 +752,41 @@ function App() {
     <div className="app-container">
       {/* Sidebar (Desktop) */}
       <aside className="sidebar">
-        <div className="flex items-center gap-4 mb-10 px-2">
+        <div className="flex items-center gap-4 mb-4 px-2">
           <div className="bg-accent-primary p-3 rounded-xl shadow-lg shadow-accent-primary/20">
             <ListTodo size={24} className="text-bg-primary" />
           </div>
           <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[var(--text-primary)] to-[var(--accent-primary)]">
             Remindly
           </h1>
+        </div>
+
+        {/* Mode Toggle */}
+        <div className="px-2 mb-8">
+          <div className="bg-bg-primary/50 p-1.5 rounded-2xl flex gap-1 border border-border-primary/50">
+            <button
+              onClick={() => setAppMode("group")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                appMode === "group"
+                  ? "bg-bg-card text-accent-primary shadow-sm border border-border-primary/50"
+                  : "text-text-muted hover:text-text-primary"
+              }`}
+            >
+              <Users size={14} />
+              <span>Kelompok</span>
+            </button>
+            <button
+              onClick={() => setAppMode("independent")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                appMode === "independent"
+                  ? "bg-bg-card text-accent-primary shadow-sm border border-border-primary/50"
+                  : "text-text-muted hover:text-text-primary"
+              }`}
+            >
+              <User size={14} />
+              <span>Mandiri</span>
+            </button>
+          </div>
         </div>
 
         <nav className="flex flex-col gap-3">
@@ -959,6 +1004,34 @@ function App() {
                   </div>
                 </div>
 
+                {/* Mobile Mode Toggle */}
+                <div className="px-4 py-3 border-b border-border-primary/20">
+                   <div className="bg-bg-primary/50 p-1 rounded-xl flex gap-1 border border-border-primary/30">
+                    <button
+                      onClick={() => setAppMode("group")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                        appMode === "group"
+                          ? "bg-bg-card text-accent-primary shadow-sm"
+                          : "text-text-muted"
+                      }`}
+                    >
+                      <Users size={12} />
+                      <span>Kelompok</span>
+                    </button>
+                    <button
+                      onClick={() => setAppMode("independent")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                        appMode === "independent"
+                          ? "bg-bg-card text-accent-primary shadow-sm"
+                          : "text-text-muted"
+                      }`}
+                    >
+                      <User size={12} />
+                      <span>Mandiri</span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Menu items */}
                 <div className="mobile-menu-item flex justify-between items-center px-4 py-2 border-b border-border-primary/20">
                   <span className="text-sm font-bold text-text-secondary">
@@ -1057,7 +1130,11 @@ function App() {
                   </button>
                 </div>
                 <TaskList
-                  tasks={tasks}
+                  tasks={
+                    appMode === "independent"
+                      ? tasks.filter((t) => t.user_id === user.id)
+                      : tasks.filter((t) => !t.is_private)
+                  }
                   deleteTask={deleteTask}
                   toggleDone={toggleDone}
                   updateTask={updateTask}
@@ -1071,7 +1148,7 @@ function App() {
               </div>
             ) : activeTab === "summaries" ? (
               <div id="summary-section" className="fadeIn">
-                <SummarySection currentUser={user} />
+                <SummarySection currentUser={user} appMode={appMode} />
               </div>
             ) : (
               <div id="roadmap-section" className="roadmap-container fadeIn">
@@ -1088,7 +1165,13 @@ function App() {
                 </div>
 
                 <div className="flex flex-col gap-8">
-                  {roadmaps.length === 0 ? (
+                  {roadmaps
+                    .filter((r) =>
+                      appMode === "independent"
+                        ? r.user_id === user.id
+                        : !r.is_private,
+                    )
+                    .length === 0 ? (
                     <div className="glass-card p-16 text-center flex flex-col items-center gap-4">
                       <div className="w-20 h-20 bg-bg-secondary rounded-full flex items-center justify-center text-text-muted">
                         <Globe size={40} />
@@ -1096,22 +1179,28 @@ function App() {
                       <h3 className="text-xl font-bold">No roadmaps yet</h3>
                     </div>
                   ) : (
-                    roadmaps.map((roadmap, idx) => (
-                      <RoadmapCard
-                        key={roadmap.id}
-                        roadmap={roadmap}
-                        index={idx}
-                        total={roadmaps.length}
-                        onDeleteRoadmap={deleteRoadmap}
-                        onEditRoadmap={editRoadmap}
-                        onAddStep={addStep}
-                        onToggleStep={toggleStep}
-                        onDeleteStep={deleteStep}
-                        onUpdateStep={updateStep}
-                        onReorderStep={reorderStep}
-                        currentUser={user}
-                      />
-                    ))
+                    roadmaps
+                      .filter((r) =>
+                        appMode === "independent"
+                          ? r.user_id === user.id
+                          : !r.is_private,
+                      )
+                      .map((roadmap, idx) => (
+                        <RoadmapCard
+                          key={roadmap.id}
+                          roadmap={roadmap}
+                          index={idx}
+                          total={roadmaps.length}
+                          onDeleteRoadmap={deleteRoadmap}
+                          onEditRoadmap={editRoadmap}
+                          onAddStep={addStep}
+                          onToggleStep={toggleStep}
+                          onDeleteStep={deleteStep}
+                          onUpdateStep={updateStep}
+                          onReorderStep={reorderStep}
+                          currentUser={user}
+                        />
+                      ))
                   )}
                 </div>
               </div>

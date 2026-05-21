@@ -38,7 +38,7 @@ const getFileType = (url) => {
   return "document";
 };
 
-function SummarySection({ currentUser }) {
+function SummarySection({ currentUser, appMode }) {
   const [summaries, setSummaries] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -137,6 +137,7 @@ function SummarySection({ currentUser }) {
           currentUser.user_metadata?.full_name ||
           currentUser.email.split("@")[0],
         user_email: currentUser.email,
+        is_private: appMode === "independent",
       };
 
       if (editingId) {
@@ -357,11 +358,16 @@ function SummarySection({ currentUser }) {
   };
 
   const filteredSummaries = summaries
-    .filter(
-      (s) =>
+    .filter((s) => {
+      const matchesSearch =
         s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.content.toLowerCase().includes(searchQuery.toLowerCase()),
-    )
+        s.content.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesMode =
+        appMode === "independent"
+          ? s.user_id === currentUser.id
+          : !s.is_private;
+      return matchesSearch && matchesMode;
+    })
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   return (
