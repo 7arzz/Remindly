@@ -91,7 +91,7 @@ function TaskCard({ task, deleteTask, toggleDone, onTransferTask, currentUser, o
                   onTransferTask(task.id);
                 }}
                 className="p-1.5 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                title={task.is_private ? "Move to Group" : "Move to Independent"}
+                title={task.is_private ? "Import to Group" : "Import to Independent"}
               >
                 {task.is_private ? <Users size={14} /> : <Lock size={14} />}
               </button>

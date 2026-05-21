@@ -116,7 +116,7 @@ export default function RoadmapCard({
             <button
               className="btn-icon"
               onClick={() => onTransferRoadmap(roadmap.id)}
-              title={roadmap.is_private ? "Move to Group" : "Move to Independent"}
+              title={roadmap.is_private ? "Import to Group" : "Import to Independent"}
             >
               {roadmap.is_private ? <Users size={14} /> : <Lock size={14} />}
             </button>

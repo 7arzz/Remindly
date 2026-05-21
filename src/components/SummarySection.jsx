@@ -201,7 +201,7 @@ function SummarySection({ currentUser, appMode }) {
         .update({ is_private: newPrivate })
         .eq("id", summaryId);
       if (error) throw error;
-      toast.success(newPrivate ? "Moved to Independent" : "Moved to Group");
+      toast.success(newPrivate ? "Imported to Independent" : "Imported to Group");
     } catch (err) {
       toast.error(err.message);
     }
@@ -471,7 +471,7 @@ function SummarySection({ currentUser, appMode }) {
                         <button
                           className="p-2 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all opacity-0 group-hover:opacity-100"
                           onClick={() => transferSummary(s.id)}
-                          title={s.is_private ? "Move to Group" : "Move to Independent"}
+                          title={s.is_private ? "Import to Group" : "Import to Independent"}
                         >
                           {s.is_private ? <Users size={16} /> : <Lock size={16} />}
                         </button>
