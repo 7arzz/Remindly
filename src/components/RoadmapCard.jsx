@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pencil, Trash2, Check, X, Plus } from "lucide-react";
+import { Pencil, Trash2, Check, X, Plus, Lock, Users } from "lucide-react";
 import StepCard from "./StepItem";
 import StepModal from "./StepModal";
 
@@ -15,6 +15,7 @@ export default function RoadmapCard({
   onDeleteStep,
   onUpdateStep,
   onReorderStep,
+  onTransferRoadmap,
   currentUser,
 }) {
   const isOwner = currentUser && roadmap.user_id === currentUser.id;
@@ -111,6 +112,13 @@ export default function RoadmapCard({
               title="Edit title"
             >
               <Pencil size={14} />
+            </button>
+            <button
+              className="btn-icon"
+              onClick={() => onTransferRoadmap(roadmap.id)}
+              title={roadmap.is_private ? "Move to Group" : "Move to Independent"}
+            >
+              {roadmap.is_private ? <Users size={14} /> : <Lock size={14} />}
             </button>
             <button
               className="btn-icon btn-danger"

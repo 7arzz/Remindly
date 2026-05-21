@@ -13,6 +13,8 @@ import {
   User,
   Menu,
   X,
+  Share2,
+  Lock,
 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -413,6 +415,38 @@ function App() {
     }
   };
 
+  const transferTask = async (taskId) => {
+    try {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+      const newPrivate = !task.is_private;
+      const { error } = await supabase
+        .from("tasks")
+        .update({ is_private: newPrivate })
+        .eq("id", taskId);
+      if (error) throw error;
+      toast.success(newPrivate ? "Moved to Independent" : "Moved to Group");
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const transferRoadmap = async (roadmapId) => {
+    try {
+      const roadmap = roadmaps.find((r) => r.id === roadmapId);
+      if (!roadmap) return;
+      const newPrivate = !roadmap.is_private;
+      const { error } = await supabase
+        .from("roadmaps")
+        .update({ is_private: newPrivate })
+        .eq("id", roadmapId);
+      if (error) throw error;
+      toast.success(newPrivate ? "Moved to Independent" : "Moved to Group");
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   const deleteRoadmap = async (id) => {
     if (!user) return;
 
@@ -750,7 +784,7 @@ function App() {
   }
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${appMode === "independent" ? "independent-mode" : ""}`}>
       {/* Sidebar (Desktop) */}
       <aside className="sidebar">
         <div className="flex items-center gap-4 mb-4 px-2">
@@ -930,6 +964,11 @@ function App() {
             <span className="font-black text-lg tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--text-primary)] to-[var(--accent-primary)]">
               Remindly
             </span>
+            <div className="flex flex-col ml-1">
+              <span className="text-[8px] font-black uppercase tracking-widest text-accent-primary leading-none opacity-80">
+                {appMode === "independent" ? "Mandiri" : "Kelompok"}
+              </span>
+            </div>
           </div>
 
           {/* Desktop: page label */}
@@ -940,6 +979,10 @@ function App() {
                 : activeTab === "summaries"
                   ? "Knowledge Hub"
                   : "Strategic Roadmap"}
+              <span className="mx-3 text-accent-primary/30 opacity-50 select-none">•</span>
+              <span className="text-accent-primary bg-accent-primary/10 px-3 py-1 rounded-full">
+                {appMode === "independent" ? "Personal Space" : "Team Hub"}
+              </span>
             </span>
           </div>
 
@@ -1139,6 +1182,7 @@ function App() {
                   deleteTask={deleteTask}
                   toggleDone={toggleDone}
                   updateTask={updateTask}
+                  onTransferTask={transferTask}
                   filter={filter}
                   sortBy={sortBy}
                   searchQuery={searchQuery}
@@ -1199,6 +1243,7 @@ function App() {
                           onDeleteStep={deleteStep}
                           onUpdateStep={updateStep}
                           onReorderStep={reorderStep}
+                          onTransferRoadmap={transferRoadmap}
                           currentUser={user}
                         />
                       ))

@@ -16,6 +16,9 @@ import {
   File,
   Download,
   ExternalLink,
+  BookOpen,
+  Lock,
+  Users,
 } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
@@ -188,6 +191,22 @@ function SummarySection({ currentUser, appMode }) {
     });
   };
 
+  const transferSummary = async (summaryId) => {
+    try {
+      const summary = summaries.find((s) => s.id === summaryId);
+      if (!summary) return;
+      const newPrivate = !summary.is_private;
+      const { error } = await supabase
+        .from("summaries")
+        .update({ is_private: newPrivate })
+        .eq("id", summaryId);
+      if (error) throw error;
+      toast.success(newPrivate ? "Moved to Independent" : "Moved to Group");
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   const handleEdit = (summary) => {
     setEditingId(summary.id);
     setTitle(summary.title);
@@ -231,8 +250,8 @@ function SummarySection({ currentUser, appMode }) {
       const prompt =
         "Tolong analisis file catatan/dokumen ini. Berikan judul yang sangat singkat (maks 5 kata) dan isi rangkuman yang jelas dalam bahasa Indonesia. Format jawaban harus seperti ini:\nJudul: [isi judul]\nIsi: [isi rangkuman]";
 
+      let result;
       if (isImage || isPdf) {
-        // Process Image or PDF via inlineData (Multimodal)
         const fileData = await new Promise((resolve) => {
           const reader = new FileReader();
           reader.onloadend = () => resolve(reader.result.split(",")[1]);
@@ -249,7 +268,6 @@ function SummarySection({ currentUser, appMode }) {
           },
         ]);
       } else if (isTextFile) {
-        // Process Text File
         const textContent = await new Promise((resolve) => {
           const reader = new FileReader();
           reader.onloadend = () => resolve(reader.result);
@@ -257,22 +275,18 @@ function SummarySection({ currentUser, appMode }) {
         });
         result = await model.generateContent(`${prompt}\n\nIsi file:\n${textContent}`);
       } else if (isDocx && window.mammoth) {
-        // Process DOCX via Mammoth
         const arrayBuffer = await imageFile.arrayBuffer();
         const docxResult = await window.mammoth.extractRawText({ arrayBuffer });
         result = await model.generateContent(`${prompt}\n\nIsi file Word:\n${docxResult.value}`);
       } else if (isPptx && window.JSZip) {
-        // Process PPTX via JSZip + XML Parser
         const arrayBuffer = await imageFile.arrayBuffer();
         const zip = await window.JSZip.loadAsync(arrayBuffer);
         let pptText = "";
         
-        // Loop through all slides
         const slideFiles = Object.keys(zip.files).filter(name => name.startsWith("ppt/slides/slide") && name.endsWith(".xml"));
         
         for (const slidePath of slideFiles) {
           const content = await zip.file(slidePath).async("text");
-          // Simple XML tag stripping to get text
           const stripped = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
           pptText += `\n[Slide]: ${stripped}`;
         }
@@ -286,7 +300,6 @@ function SummarySection({ currentUser, appMode }) {
       const response = await result.response;
       const text = response.text();
 
-      // Parsing simple text format
       const titleMatch = text.match(/Judul:\s*(.*)/i);
       const contentMatch = text.match(/Isi:\s*([\s\S]*)/i);
 
@@ -451,8 +464,16 @@ function SummarySection({ currentUser, appMode }) {
                         <button
                           className="p-2 rounded-lg text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100"
                           onClick={() => handleDelete(s)}
+                          title="Delete Summary"
                         >
                           <Trash2 size={16} />
+                        </button>
+                        <button
+                          className="p-2 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-all opacity-0 group-hover:opacity-100"
+                          onClick={() => transferSummary(s.id)}
+                          title={s.is_private ? "Move to Group" : "Move to Independent"}
+                        >
+                          {s.is_private ? <Users size={16} /> : <Lock size={16} />}
                         </button>
                       </>
                     )}

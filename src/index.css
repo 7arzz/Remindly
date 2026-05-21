@@ -44,6 +44,19 @@
     --gradient-sea: radial-gradient(circle at top right, #0a192f, #020c1b);
   }
 
+  /* Independent Mode Theme Override */
+  .independent-mode {
+    --accent-primary: #8b5cf6;
+    --accent-glow: rgba(139, 92, 246, 0.08);
+    --border-accent: #8b5cf6;
+  }
+
+  .dark .independent-mode {
+    --accent-primary: #a78bfa;
+    --accent-glow: rgba(167, 139, 250, 0.2);
+    --border-accent: #a78bfa;
+  }
+
   body {
     @apply font-outfit bg-gradient-sea text-text-primary min-h-screen antialiased;
     line-height: 1.5;

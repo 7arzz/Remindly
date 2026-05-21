@@ -2,7 +2,7 @@ import { AnimatePresence, motion as Motion } from "framer-motion";
 
 import TaskCard from "./TaskCard";
 
-function TaskList({ tasks, deleteTask, toggleDone, updateTask, filter, sortBy, searchQuery, currentUser, onTaskClick, onEditTaskClick }) {
+function TaskList({ tasks, deleteTask, toggleDone, updateTask, onTransferTask, filter, sortBy, searchQuery, currentUser, onTaskClick, onEditTaskClick }) {
   // 1. Filter
   const filteredTasks = tasks.filter(task => {
     // Status filter
