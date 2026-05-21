@@ -11,6 +11,7 @@ import {
   HelpCircle,
   Users,
   User,
+  Menu,
   X,
 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
